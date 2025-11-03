@@ -1,0 +1,273 @@
+--// VD Menu Full Version - WalkSpeed 18 Start
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local screenGui = Instance.new("ScreenGui", playerGui)
+screenGui.Name = "VD_Menu"
+
+-- Main UI Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = screenGui
+mainFrame.Size = UDim2.new(0.75,0,0.75,0)
+mainFrame.Position = UDim2.new(0.125,0,0.125,0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+local frameCorner = Instance.new("UICorner", mainFrame)
+frameCorner.CornerRadius = UDim.new(0,25)
+mainFrame.Visible = false
+
+-- Header
+local title = Instance.new("TextLabel")
+title.Parent = mainFrame
+title.Size = UDim2.new(1,0,0,30)
+title.Position = UDim2.new(0,0,0,0)
+title.BackgroundTransparency = 1
+title.Text = "สคริปเขียนมาจากช่อง/สุดหล่อเมืองธน"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.SourceSans
+title.TextSize = 18
+
+--==============================
+-- Speed Button
+--==============================
+local speedEnabled = false
+local speedButton = Instance.new("TextButton")
+speedButton.Parent = mainFrame
+speedButton.Size = UDim2.new(0.3,0,0,40)
+speedButton.Position = UDim2.new(0.35,0,0.2,0)
+speedButton.Text = "Speed: ◌"
+speedButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+speedButton.TextColor3 = Color3.new(1,1,1)
+local speedCorner = Instance.new("UICorner", speedButton)
+speedCorner.CornerRadius = UDim.new(0,12)
+
+speedButton.MouseButton1Click:Connect(function()
+	speedEnabled = not speedEnabled
+	if speedEnabled then
+		speedButton.Text = "Speed: ✓"
+	else
+		speedButton.Text = "Speed: ◌"
+		if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+			LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 18
+		end
+	end
+end)
+
+--==============================
+-- NameTag Button
+--==============================
+local nameTags = {}
+local nameTagEnabled = true
+local nameTagButton = Instance.new("TextButton")
+nameTagButton.Parent = mainFrame
+nameTagButton.Position = UDim2.new(0.35,0,0.35,0)
+nameTagButton.Size = UDim2.new(0.3,0,0,40)
+nameTagButton.Text = "NameTag: ✓"
+nameTagButton.TextColor3 = Color3.new(1,1,1)
+nameTagButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+local nameTagCorner = Instance.new("UICorner", nameTagButton)
+nameTagCorner.CornerRadius = UDim.new(0,12)
+
+-- NameTag function
+local function addNameTag(character, player)
+	if character:FindFirstChild("Head") then
+		local head = character.Head
+		local billboard = Instance.new("BillboardGui")
+		billboard.Adornee = head
+		billboard.Size = UDim2.new(0,200,0,50)
+		billboard.StudsOffset = Vector3.new(0,2,0)
+		billboard.AlwaysOnTop = true
+		billboard.Name = "VD_NameTag"
+		billboard.Parent = head
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Text = player.Name
+		nameLabel.Size = UDim2.new(1,0,1,0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.TextColor3 = Color3.new(1,1,1)
+		nameLabel.TextStrokeTransparency = 0
+		nameLabel.TextScaled = true
+		nameLabel.Font = Enum.Font.SourceSansBold
+		nameLabel.Parent = billboard
+
+		nameTags[player] = billboard
+	end
+end
+
+local function onCharacterAdded(character, player)
+	addNameTag(character, player)
+end
+
+local function onPlayerAdded(player)
+	player.CharacterAdded:Connect(function(char)
+		onCharacterAdded(char, player)
+	end)
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+	if player.Character then
+		addNameTag(player.Character, player)
+	end
+	onPlayerAdded(player)
+end
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+nameTagButton.MouseButton1Click:Connect(function()
+	nameTagEnabled = not nameTagEnabled
+	for player, tag in pairs(nameTags) do
+		if tag then
+			tag.Enabled = nameTagEnabled
+		end
+	end
+	if nameTagEnabled then
+		nameTagButton.Text = "NameTag: ✓"
+	else
+		nameTagButton.Text = "NameTag: ◌"
+	end
+end)
+
+--==============================
+-- GodMode Button
+--==============================
+local godEnabled = false
+local godButton = Instance.new("TextButton")
+godButton.Parent = mainFrame
+godButton.Position = UDim2.new(0.35,0,0.5,0)
+godButton.Size = UDim2.new(0.3,0,0,40)
+godButton.Text = "GodMode: ◌"
+godButton.TextColor3 = Color3.new(1,1,1)
+godButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+local godCorner = Instance.new("UICorner", godButton)
+godCorner.CornerRadius = UDim.new(0,12)
+
+local function enableGod(character)
+	if not character then return end
+	local hum = character:FindFirstChildWhichIsA("Humanoid") or character:WaitForChild("Humanoid",5)
+	if not hum then return end
+	hum.MaxHealth = 1e6
+	hum.Health = hum.MaxHealth
+	local conn
+	conn = hum.HealthChanged:Connect(function()
+		if not hum or not hum.Parent then
+			if conn then pcall(function() conn:Disconnect() end) end
+			return
+		end
+		if godEnabled and hum.Health < hum.MaxHealth then
+			hum.Health = hum.MaxHealth
+		end
+	end)
+end
+
+godButton.MouseButton1Click:Connect(function()
+	godEnabled = not godEnabled
+	if godEnabled then
+		godButton.Text = "GodMode: ✓"
+		if LocalPlayer.Character then
+			enableGod(LocalPlayer.Character)
+		end
+	else
+		godButton.Text = "GodMode: ◌"
+	end
+end)
+
+if LocalPlayer.Character then
+	enableGod(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(enableGod)
+
+--==============================
+-- Fly Button (ใช้ loadstring ของมึง)
+--==============================
+local flyButton = Instance.new("TextButton")
+flyButton.Parent = mainFrame
+flyButton.Position = UDim2.new(0.35,0,0.65,0)
+flyButton.Size = UDim2.new(0.3,0,0,40)
+flyButton.Text = "Fly: ◌"
+flyButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+flyButton.TextColor3 = Color3.new(1,1,1)
+local flyCorner = Instance.new("UICorner", flyButton)
+flyCorner.CornerRadius = UDim.new(0,12)
+
+local flyEnabled = false
+
+flyButton.MouseButton1Click:Connect(function()
+	flyEnabled = not flyEnabled
+	if flyEnabled then
+		flyButton.Text = "Fly: ✓"
+		loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
+	else
+		flyButton.Text = "Fly: ◌"
+	end
+end)
+
+--==============================
+-- Toggle UI Button (ลากได้)
+--==============================
+local toggleButton = Instance.new("TextButton")
+toggleButton.Parent = screenGui
+toggleButton.Size = UDim2.new(0,70,0,35)
+toggleButton.Position = UDim2.new(0.02,0,0.05,0)
+toggleButton.Text = "VD"
+toggleButton.TextScaled = true
+toggleButton.BackgroundColor3 = Color3.fromRGB(30,30,30)
+toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+toggleButton.BorderSizePixel = 0
+local toggleCorner = Instance.new("UICorner", toggleButton)
+toggleCorner.CornerRadius = UDim.new(0,8)
+
+-- Drag logic
+local dragging = false
+local dragInput, mousePos, framePos
+
+toggleButton.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		mousePos = input.Position
+		framePos = toggleButton.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+toggleButton.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+
+UIS.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - mousePos
+		toggleButton.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X,
+			framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+	end
+end)
+
+-- Click to toggle MainFrame
+toggleButton.MouseButton1Click:Connect(function()
+	mainFrame.Visible = not mainFrame.Visible
+end)
+
+--==============================
+-- WalkSpeed update loop
+--==============================
+RunService.RenderStepped:Connect(function()
+	if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+		local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if speedEnabled then
+			hum.WalkSpeed = 100
+		else
+			hum.WalkSpeed = 18 -- เริ่มต้นปรับเป็น 18
+		end
+	end
+end)
+
+print("✅ VD Menu Loaded - WalkSpeed 18 Start - Fly uses your loadstring")
