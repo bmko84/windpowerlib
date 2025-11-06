@@ -1,0 +1,305 @@
+--==============================
+-- VD Menu + Player ESP/NameTag + Hitbox
+--==============================
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local screenGui = Instance.new("ScreenGui", playerGui)
+screenGui.Name = "VD_Menu"
+
+--==============================
+-- Main UI Frame
+--==============================
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = screenGui
+mainFrame.Size = UDim2.new(0.75,0,0.75,0)
+mainFrame.Position = UDim2.new(0.125,0,0.125,0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+local frameCorner = Instance.new("UICorner", mainFrame)
+frameCorner.CornerRadius = UDim.new(0,25)
+mainFrame.Visible = false
+
+-- Header
+local title = Instance.new("TextLabel")
+title.Parent = mainFrame
+title.Size = UDim2.new(1,0,0,25)
+title.Position = UDim2.new(0,0,0,0)
+title.BackgroundTransparency = 1
+title.Text = "สคริปเขียนมาจากช่อง/สุดหล่อเมืองธน"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.SourceSans
+title.TextSize = 14
+
+--==============================
+-- Speed Button
+--==============================
+local speedEnabled = false
+local normalSpeed = 16
+local boostedSpeed = 100
+
+local speedButton = Instance.new("TextButton")
+speedButton.Parent = mainFrame
+speedButton.Size = UDim2.new(0.3,0,0,40)
+speedButton.Position = UDim2.new(0.05,0,0.2,0)
+speedButton.Text = "Speed: ◌"
+speedButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+speedButton.TextColor3 = Color3.new(1,1,1)
+local speedCorner = Instance.new("UICorner", speedButton)
+speedCorner.CornerRadius = UDim.new(0,12)
+
+speedButton.MouseButton1Click:Connect(function()
+    speedEnabled = not speedEnabled
+    speedButton.Text = speedEnabled and "Speed: ✓" or "Speed: ◌"
+end)
+
+--==============================
+-- NameTag + ESP Button
+--==============================
+local espEnabled = false
+local espObjects = {}
+
+local nameTagButton = Instance.new("TextButton")
+nameTagButton.Parent = mainFrame
+nameTagButton.Position = UDim2.new(0.05,0,0.35,0)
+nameTagButton.Size = UDim2.new(0.3,0,0,40)
+nameTagButton.Text = "ESP: ◌"
+nameTagButton.TextColor3 = Color3.new(1,1,1)
+nameTagButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+local nameTagCorner = Instance.new("UICorner", nameTagButton)
+nameTagCorner.CornerRadius = UDim.new(0,12)
+
+local function createESP(player)
+    if player == LocalPlayer then return end
+    if not player.Character then return end
+
+    local char = player.Character  
+    local hum = char:FindFirstChildOfClass("Humanoid")  
+    local head = char:FindFirstChild("Head")  
+
+    if not hum or not head then return end  
+
+    -- ลบของเก่าก่อน  
+    if espObjects[player] then  
+        for _, obj in ipairs(espObjects[player]) do  
+            obj:Destroy()  
+        end  
+    end  
+    espObjects[player] = {}  
+
+    -- Highlight รอบตัว  
+    local highlight = Instance.new("Highlight")  
+    highlight.Adornee = char  
+    highlight.FillTransparency = 0.7  
+    highlight.OutlineTransparency = 0  
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop  
+    highlight.FillColor = player.Team and player.Team.Name == "Killer" and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)  
+    highlight.Parent = Workspace  
+    table.insert(espObjects[player], highlight)  
+
+    -- Billboard NameTag  
+    local billboard = Instance.new("BillboardGui")  
+    billboard.Adornee = head  
+    billboard.Size = UDim2.new(0,150,0,25)  
+    billboard.StudsOffset = Vector3.new(0,2.5,0)  
+    billboard.AlwaysOnTop = true  
+    billboard.Parent = head  
+
+    local label = Instance.new("TextLabel")  
+    label.Size = UDim2.new(1,0,1,0)  
+    label.BackgroundTransparency = 1  
+    label.Text = player.DisplayName or player.Name  
+    label.TextColor3 = highlight.FillColor  
+    label.TextStrokeTransparency = 0.2  
+    label.Font = Enum.Font.SourceSansBold  
+    label.TextSize = 14  
+    label.Parent = billboard  
+
+    table.insert(espObjects[player], billboard)
+end
+
+local function setupPlayer(player)
+    player.CharacterAdded:Connect(function()
+        if espEnabled then
+            task.wait(1)
+            createESP(player)
+        end
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then
+        setupPlayer(p)
+    end
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+Players.PlayerRemoving:Connect(function(p)
+    if espObjects[p] then
+        for _, o in ipairs(espObjects[p]) do o:Destroy() end
+        espObjects[p] = nil
+    end
+end)
+
+nameTagButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    nameTagButton.Text = espEnabled and "ESP: ✓" or "ESP: ◌"
+
+    if espEnabled then  
+        for _, p in ipairs(Players:GetPlayers()) do  
+            createESP(p)  
+        end  
+    else  
+        for _, objs in pairs(espObjects) do  
+            for _, o in ipairs(objs) do  
+                o:Destroy()  
+            end  
+        end  
+        espObjects = {}  
+    end
+end)
+
+--==============================
+-- GodMode
+--==============================
+local godEnabled = false
+local godButton = Instance.new("TextButton")
+godButton.Parent = mainFrame
+godButton.Position = UDim2.new(0.4,0,0.5,0)
+godButton.Size = UDim2.new(0.3,0,0,40)
+godButton.Text = "GodMode: ◌"
+godButton.TextColor3 = Color3.new(1,1,1)
+godButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+local godCorner = Instance.new("UICorner", godButton)
+godCorner.CornerRadius = UDim.new(0,12)
+
+godButton.MouseButton1Click:Connect(function()
+    godEnabled = not godEnabled
+    godButton.Text = godEnabled and "GodMode: ✓" or "GodMode: ◌"
+end)
+
+--==============================
+-- Fly
+--==============================
+local flyButton = Instance.new("TextButton")
+flyButton.Parent = mainFrame
+flyButton.Position = UDim2.new(0.05,0,0.5,0)
+flyButton.Size = UDim2.new(0.3,0,0,40)
+flyButton.Text = "Fly: ◌"
+flyButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+flyButton.TextColor3 = Color3.new(1,1,1)
+local flyCorner = Instance.new("UICorner", flyButton)
+flyCorner.CornerRadius = UDim.new(0,12)
+
+local flyEnabled = false
+flyButton.MouseButton1Click:Connect(function()
+    flyEnabled = not flyEnabled
+    flyButton.Text = flyEnabled and "Fly: ✓" or "Fly: ◌"
+end)
+
+--==============================
+-- Hitbox + HeadSize
+--==============================
+local hitboxEnabled = false
+_G.HeadSize = 2
+
+local headSizeBox = Instance.new("TextBox")
+headSizeBox.Parent = mainFrame
+headSizeBox.Size = UDim2.new(0.2,0,0,30)
+headSizeBox.Position = UDim2.new(0.05,0,0.65,0)
+headSizeBox.Text = tostring(_G.HeadSize)
+headSizeBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
+headSizeBox.TextColor3 = Color3.new(1,1,1)
+local headSizeCorner = Instance.new("UICorner", headSizeBox)
+headSizeCorner.CornerRadius = UDim.new(0,8)
+
+headSizeBox.FocusLost:Connect(function()
+    local size = tonumber(headSizeBox.Text)
+    if size then _G.HeadSize = size else headSizeBox.Text = tostring(_G.HeadSize) end
+end)
+
+local hitboxButton = Instance.new("TextButton")
+hitboxButton.Parent = mainFrame
+hitboxButton.Size = UDim2.new(0.2,0,0,30)
+hitboxButton.Position = UDim2.new(0.3,0,0.65,0)
+hitboxButton.Text = "Enable Hitbox"
+hitboxButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+hitboxButton.TextColor3 = Color3.new(1,1,1)
+local hitboxCorner = Instance.new("UICorner", hitboxButton)
+hitboxCorner.CornerRadius = UDim.new(0,8)
+
+local hitboxPlayers = {}
+
+local function updateHitbox()
+    if not hitboxEnabled then return end
+    hitboxPlayers = {}
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            table.insert(hitboxPlayers,p)
+        end
+    end
+end
+
+hitboxButton.MouseButton1Click:Connect(function()
+    hitboxEnabled = not hitboxEnabled
+    hitboxButton.Text = hitboxEnabled and "Disable Hitbox" or "Enable Hitbox"
+    updateHitbox()
+end)
+
+--==============================
+-- Toggle UI
+--==============================
+local toggleButton = Instance.new("TextButton")
+toggleButton.Parent = screenGui
+toggleButton.Size = UDim2.new(0,70,0,35)
+toggleButton.Position = UDim2.new(0.02,0,0.05,0)
+toggleButton.Text = "VD"
+toggleButton.TextScaled = true
+toggleButton.BackgroundColor3 = Color3.fromRGB(30,30,30)
+toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+toggleButton.BorderSizePixel = 0
+local toggleCorner = Instance.new("UICorner", toggleButton)
+toggleCorner.CornerRadius = UDim.new(0,8)
+
+toggleButton.MouseButton1Click:Connect(function()
+    mainFrame.Visible = not mainFrame.Visible
+end)
+
+--==============================
+-- Loops
+--==============================
+RunService.RenderStepped:Connect(function()
+    -- Speed
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        hum.WalkSpeed = speedEnabled and boostedSpeed or normalSpeed
+    end
+
+    -- GodMode
+    if godEnabled and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.Health = hum.MaxHealth end
+    end
+
+    -- Hitbox
+    if hitboxEnabled then
+        for _, p in ipairs(hitboxPlayers) do
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = p.Character.HumanoidRootPart
+                hrp.Size = Vector3.new(_G.HeadSize,_G.HeadSize,_G.HeadSize)
+                hrp.Transparency = 0
+                hrp.BrickColor = BrickColor.new("Really blue")
+                hrp.Material = Enum.Material.Neon
+                hrp.CanCollide = false
+            end
+        end
+    end
+end)
+
+print("✅ VD Menu Loaded + Player ESP/NameTag + Hitbox integrated")
