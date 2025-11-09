@@ -1,0 +1,222 @@
+-- 🌀 BmEGOno1 Hub (Mobile Friendly Full Version)
+-- by สุดหล่อเมืองธน
+
+-- โหลด Fluent UI
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+-- สร้างหน้าต่างหลัก
+local Window = Fluent:CreateWindow({
+    Title = "BmEGOno1 Hub",
+    SubTitle = "by สุดหล่อเมืองธน",
+    TabWidth = 120,
+    Size = UDim2.fromOffset(500, 350),
+    Acrylic = true,
+    Theme = "Dark"
+})
+
+-- แท็บต่าง ๆ
+local MainTab = Window:AddTab({ Title = "Main" })
+local VisualTab = Window:AddTab({ Title = "Visual" })
+local MiscTab = Window:AddTab({ Title = "Misc" })
+local CreditsTab = Window:AddTab({ Title = "Credits" })
+
+-- ตัวแปรระบบ
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+local speedEnabled = false
+local espEnabled = false
+local godEnabled = false
+local normalSpeed = 16
+local boostedSpeed = 100
+local espObjects = {}
+
+------------------------------------------------------
+-- SPEED BOOST
+------------------------------------------------------
+MainTab:AddToggle("Speed", {
+    Title = "Speed Boost",
+    Default = false,
+    Callback = function(state)
+        speedEnabled = state
+    end
+})
+
+RunService.RenderStepped:Connect(function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        hum.WalkSpeed = speedEnabled and boostedSpeed or normalSpeed
+    end
+end)
+
+------------------------------------------------------
+-- ESP + NameTag (แยกสีฆาตกร)
+------------------------------------------------------
+local function createESP(player)
+    if player == LocalPlayer then return end
+    if not player.Character then return end
+
+    local char = player.Character
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+
+    -- ลบของเก่าก่อน
+    if espObjects[player] then
+        for _, o in ipairs(espObjects[player]) do o:Destroy() end
+    end
+    espObjects[player] = {}
+
+    -- Highlight รอบตัว
+    local highlight = Instance.new("Highlight")
+    highlight.Adornee = char
+    highlight.FillTransparency = 0.7
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = (player.Team and player.Team.Name == "Killer") and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
+    highlight.Parent = Workspace
+    table.insert(espObjects[player], highlight)
+
+    -- Billboard NameTag
+    local billboard = Instance.new("BillboardGui")
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0,150,0,25)
+    billboard.StudsOffset = Vector3.new(0,2.5,0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = head
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1,0,1,0)
+    label.BackgroundTransparency = 1
+    label.Text = player.DisplayName or player.Name
+    label.TextColor3 = highlight.FillColor
+    label.TextStrokeTransparency = 0.2
+    label.Font = Enum.Font.SourceSansBold
+    label.TextSize = 14
+    label.Parent = billboard
+    table.insert(espObjects[player], billboard)
+end
+
+local function setupPlayer(player)
+    player.CharacterAdded:Connect(function()
+        if espEnabled then
+            task.wait(1)
+            createESP(player)
+        end
+    end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then setupPlayer(p) end
+end
+
+Players.PlayerAdded:Connect(setupPlayer)
+Players.PlayerRemoving:Connect(function(p)
+    if espObjects[p] then
+        for _, o in ipairs(espObjects[p]) do o:Destroy() end
+        espObjects[p] = nil
+    end
+end)
+
+VisualTab:AddToggle("ESP", {
+    Title = "Player ESP",
+    Default = false,
+    Callback = function(state)
+        espEnabled = state
+        if not state then
+            for _, objs in pairs(espObjects) do
+                for _, o in ipairs(objs) do o:Destroy() end
+            end
+            espObjects = {}
+            return
+        end
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer then createESP(p) end
+        end
+    end
+})
+
+------------------------------------------------------
+-- GOD MODE
+------------------------------------------------------
+MiscTab:AddToggle("GodMode", {
+    Title = "God Mode",
+    Default = false,
+    Callback = function(state)
+        godEnabled = state
+        if godEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChildOfClass("Humanoid") then
+                char:FindFirstChildOfClass("Humanoid").Name = "GodHumanoid"
+            end
+        end
+    end
+})
+
+------------------------------------------------------
+-- FLY
+------------------------------------------------------
+MiscTab:AddButton({
+    Title = "Fly",
+    Description = "Enable Fly Script",
+    Callback = function()
+        loadstring("\108\111\97\100\115\116\114\105\110\103\40\103\97\109\101\58\72\116\116\112\71\101\116\40\40\39\104\116\116\112\115\58\47\47\103\105\115\116\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\109\101\111\122\111\110\101\89\84\47\98\102\48\51\55\100\102\102\57\102\48\97\55\48\48\49\55\51\48\52\100\100\100\54\55\102\100\99\100\51\55\48\47\114\97\119\47\101\49\52\101\55\52\102\52\50\53\98\48\54\48\100\102\53\50\51\51\52\51\99\102\51\48\98\55\56\55\48\55\52\101\98\51\99\53\100\50\47\97\114\99\101\117\115\37\50\53\50\48\120\37\50\53\50\48\102\108\121\37\50\53\50\48\50\37\50\53\50\48\111\98\102\108\117\99\97\116\111\114\39\41\44\116\114\117\101\41\41\40\41\10\10")()
+    end
+})
+
+------------------------------------------------------
+-- HITBOX
+------------------------------------------------------
+MiscTab:AddButton({
+    Title = "Hitbox",
+    Description = "Enable Hitbox Script",
+    Callback = function()
+        loadstring(game:HttpGet("https://pastefy.app/ItfO0tdg/raw"))()
+    end
+})
+
+------------------------------------------------------
+-- ปุ่มลอยเปิด/ปิดเมนูมือถือ (มุมซ้ายบน)
+------------------------------------------------------
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+local toggleGui = Instance.new("ScreenGui", playerGui)
+toggleGui.Name = "BmEGOno1_Toggle"
+
+local button = Instance.new("TextButton")
+button.Parent = toggleGui
+button.Size = UDim2.new(0, 100, 0, 40)
+button.Position = UDim2.new(0, 10, 0, 10)
+button.Text = "📁 Menu"
+button.TextScaled = true
+button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Active = true
+button.Draggable = true
+local corner = Instance.new("UICorner", button)
+corner.CornerRadius = UDim.new(0, 8)
+
+local menuVisible = true
+button.MouseButton1Click:Connect(function()
+    menuVisible = not menuVisible
+    Window.MainFrame.Visible = menuVisible
+    Fluent:Notify({
+        Title = "BmEGOno1 Hub",
+        Content = menuVisible and "🟢 เมนูเปิดแล้ว" or "🔴 เมนูถูกปิด",
+        Duration = 2
+    })
+end)
+
+------------------------------------------------------
+-- CREDITS
+------------------------------------------------------
+CreditsTab:AddParagraph({
+    Title = "👑 BmEGOno1 Hub",
+    Content = "สร้างโดย: สุดหล่อเมืองธน\nใช้ Fluent UI (Violence District)\n📱 มือถือกดปุ่ม '📁 Menu' เพื่อเปิด/ปิดเมนู"
+})
+
+Fluent:Notify({
+    Title = "BmEGOno1 Hub",
+    Content = "✅ โหลดสำเร็จ! กดปุ่ม '📁 Menu' เพื่อเปิด/ปิดเมนู",
+    Duration = 5
+})
