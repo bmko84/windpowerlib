@@ -1,6 +1,14 @@
-
+-- Services
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+-- Player / Game
 local LocalPlayer = Players.LocalPlayer
+local player = LocalPlayer
+local placeId = game.PlaceId
+local visitedServers = {}
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 -- โหลด WindUI
