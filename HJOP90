@@ -1,0 +1,548 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+local Window = WindUI:CreateWindow({
+    Title = "bmegono1",
+    Icon = "zap",
+    Author = "bmegono1",
+    Folder = "MySuperHub",
+    Size = UDim2.fromOffset(580, 460),
+    MinSize = Vector2.new(560, 350),
+    MaxSize = Vector2.new(850, 560),
+    Transparent = true,
+    Theme = "Dark",
+    Resizable = true,
+    SideBarWidth = 200,
+    BackgroundImageTransparency = 0.42,
+    HideSearchBar = true,
+    ScrollBarEnabled = false,
+    User = {
+        Enabled = true,
+        Anonymous = false,
+        Name = LocalPlayer.Name,
+        Image = "rbxthumb://type=AvatarHeadShot&id=" .. LocalPlayer.UserId,
+        Callback = function()
+            print("Clicked user section!")
+        end,
+    },
+})
+
+local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
+local EspTab    = Window:Tab({Title = "ESP", Icon = "eye"})
+local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
+local MiscTab   = Window:Tab({Title = "Misc", Icon = "cog"})
+
+
+------------------------------------------------
+-- BALANCE (ADD ONLY)
+------------------------------------------------
+local BankBalance = CombatTab:Button({Title = "🏦 Bank Balance", Desc = "N/A"})
+local HandBalance = CombatTab:Button({Title = "💸 Hand Balance", Desc = "N/A"})
+
+local function HandMoney()
+    local ok, value = pcall(function()
+        local topRight = PlayerGui:FindFirstChild("TopRightHud")
+        if topRight then
+            local holder = topRight:FindFirstChild("Holder")
+            if holder and holder:FindFirstChild("Frame")
+            and holder.Frame:FindFirstChild("MoneyTextLabel") then
+                return tonumber(holder.Frame.MoneyTextLabel.Text:match("%$(%d+)"))
+            end
+        end
+        return 0
+    end)
+    return ok and value or 0
+end
+
+local function ATMMoney()
+    for _, v in ipairs(PlayerGui:GetDescendants()) do
+        if v:IsA("TextLabel") and v.Text:find("Bank Balance") then
+            local ok, value = pcall(function()
+                return tonumber(v.Text:match("%$(%d+)"))
+            end)
+            if ok then return value end
+        end
+    end
+    return 0
+end
+
+task.spawn(function()
+    while task.wait(0.2) do
+        BankBalance:SetDesc('<b><font color="#00FF00">$' .. (ATMMoney() or 0) .. '</font></b>')
+        HandBalance:SetDesc('<b><font color="#00f2ff">$' .. (HandMoney() or 0) .. '</font></b>')
+    end
+end)
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local SilentAimEnabled = false
+local EnableWallBang = false
+
+CombatTab:Toggle({
+    Title = "Enable Silent Aim",
+    Default = false,
+    Callback = function(v)
+        SilentAimEnabled = v
+    end
+})
+
+CombatTab:Toggle({
+    Title = "Enable Wall Bang",
+    Default = false,
+    Callback = function(v)
+        EnableWallBang = v
+    end
+})
+
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Radius = 150
+FOVCircle.Thickness = 0.5
+FOVCircle.Filled = false
+FOVCircle.Color = Color3.fromRGB(255,0,0)
+FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+FOVCircle.Visible = false
+local showFov = false
+
+CombatTab:Toggle({
+    Title = "Enable FOV Circle",
+    Default = false,
+    Callback = function(state)
+        showFov = state
+        FOVCircle.Visible = showFov
+    end
+})
+
+CombatTab:Slider({
+    Title = "FOV Radius",
+    Step = 1,
+    Value = {Min = 50, Max = 500, Default = FOVCircle.Radius},
+    Callback = function(value)
+        FOVCircle.Radius = tonumber(value)
+    end
+})
+
+local CurrentTarget
+local BodyPartOptions = {"Head", "HumanoidRootPart"}
+local SelectedBodyPart = "Head"
+
+CombatTab:Dropdown({
+    Flag = "TargetBodyPart",
+    Title = "Lock Body Part",
+    Values = BodyPartOptions,
+    Value = "Head",
+    Callback = function(option)
+        SelectedBodyPart = option
+    end
+})
+
+local IgnoredPlayers = {}
+
+local function GetPlayerDropdownOptions()
+    local options = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        table.insert(options, player.Name)
+    end
+    return options
+end
+
+local ignoreDropdown
+ignoreDropdown = CombatTab:Dropdown({
+    Flag = "IgnorePlayers",
+    Title = "Ignore Players",
+    Values = GetPlayerDropdownOptions(),
+    Value = {},
+    Multi = true,
+    Callback = function(selectedOptions)
+        IgnoredPlayers = {}
+        for _, v in ipairs(selectedOptions) do
+            table.insert(IgnoredPlayers, v)
+        end
+    end
+})
+
+CombatTab:Button({
+    Title = "Reset Ignored Players",
+    Callback = function()
+        IgnoredPlayers = {}
+        if ignoreDropdown then
+            if ignoreDropdown.Reset then
+                ignoreDropdown:Reset()
+            end
+            if ignoreDropdown.SetValues then
+                ignoreDropdown:SetValues(GetPlayerDropdownOptions())
+            end
+        end
+    end
+})
+
+Players.PlayerAdded:Connect(function(player)
+    if ignoreDropdown and ignoreDropdown.SetValues then
+        ignoreDropdown:SetValues(GetPlayerDropdownOptions())
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    for i=#IgnoredPlayers,1,-1 do
+        if IgnoredPlayers[i] == player.Name then
+            table.remove(IgnoredPlayers,i)
+        end
+    end
+    if ignoreDropdown and ignoreDropdown.SetValues then
+        ignoreDropdown:SetValues(GetPlayerDropdownOptions())
+    end
+end)
+
+local DebugGuns = {
+    ["P226"]=true, ["MP5"]=true, ["M24"]=true, ["Draco"]=true, ["Glock"]=true,
+    ["Sawnoff"]=true, ["Uzi"]=true, ["G3"]=true, ["C9"]=true, ["Hunting Rifle"]=true,
+    ["Anaconda"]=true, ["AK47"]=true, ["Remington"]=true, ["Double Barrel"]=true
+}
+
+local function IsHoldingAllowedGun(args)
+    local ok, weapon = pcall(function() return args[3] end)
+    if not ok then return false end
+    if typeof(weapon) == "Instance" and DebugGuns[weapon.Name] then return true end
+    for _, child in pairs(LocalPlayer.Character:GetChildren()) do
+        if (child:IsA("Tool") or child:IsA("Model")) and DebugGuns[child.Name] then return true end
+    end
+    return false
+end
+
+local tracerLine = Drawing.new("Line")
+tracerLine.Color = Color3.fromRGB(255,0,0)
+tracerLine.Thickness = 2
+tracerLine.Visible = false
+
+local PREDICTION_BASE = 0.15
+local WALLBANG_FACTOR_ROOT = 1.0
+local WALLBANG_FACTOR_SEAT = 1.2
+local HEAD_VEL_FACTOR = 0.1
+local ROOT_VEL_FACTOR = 0.12
+
+local function PredictPosition(part, enableWallBang)
+    local root = part.Parent:FindFirstChild("HumanoidRootPart")
+    if not root then return part.Position end
+    local velocityFactor = (part.Name == "Head") and HEAD_VEL_FACTOR or ROOT_VEL_FACTOR
+    local baseVelocity = root.Velocity
+    if part:IsA("BasePart") then
+        baseVelocity = baseVelocity + (part.Velocity * velocityFactor)
+    end
+    local prediction = part.Position + (baseVelocity * PREDICTION_BASE)
+    if enableWallBang then
+        local seat = root:FindFirstChildWhichIsA("WeldConstraint") or root:FindFirstChildWhichIsA("Weld")
+        if seat and seat.Part0 and seat.Part0.Velocity then
+            local rootVel = root.Velocity * WALLBANG_FACTOR_ROOT
+            local seatVel = seat.Part0.Velocity * WALLBANG_FACTOR_SEAT
+            prediction = part.Position + ((rootVel + seatVel) * PREDICTION_BASE)
+        end
+    end
+    return prediction
+end
+
+local function SpawnDebugBullet(startPos, targetPos)
+    local dist = (targetPos - startPos).Magnitude
+    local beam = Instance.new("Part")
+    beam.Anchored = true
+    beam.CanCollide = false
+    beam.Material = Enum.Material.Neon
+    beam.Size = Vector3.new(0.1,0.1,dist)
+    beam.CFrame = CFrame.new(startPos, targetPos) * CFrame.new(0,0,-dist/2)
+    local hue = (tick()*0.5)%1
+    beam.Color = Color3.fromHSV(hue, 1, 1)
+    beam.Parent = Workspace
+    Debris:AddItem(beam, 0.5)
+end
+
+local function GetTargetPart(character)
+    if not character then return nil end
+    return character:FindFirstChild(SelectedBodyPart) or character:FindFirstChild("HumanoidRootPart")
+end
+
+local function GetClosestTarget()
+    local closest
+    local shortest = math.huge
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and not table.find(IgnoredPlayers, player.Name) then
+            local part = GetTargetPart(player.Character)
+            if part then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                    if showFov then
+                        if dist < FOVCircle.Radius and dist < shortest then
+                            shortest = dist
+                            closest = player
+                        end
+                    else
+                        if dist < shortest then
+                            shortest = dist
+                            closest = player
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function IsShooting(args)
+    for i, v in pairs(args) do
+        if typeof(v) == "string" and v:lower():find("shoot") then
+            return true
+        elseif typeof(v) == "table" then
+            for _, t in pairs(v) do
+                if typeof(t) == "table" and t.Instance and t.Position then
+                    return true
+                end
+            end
+        end
+    end
+    return false
+end
+
+local send = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Send")
+local oldFire
+oldFire = hookfunction(send.FireServer, function(self, ...)
+    local args = {...}
+    if SilentAimEnabled and IsHoldingAllowedGun(args) then
+        if IsShooting(args) then
+            CurrentTarget = GetClosestTarget()
+            if CurrentTarget and CurrentTarget.Character then
+                local targetPart = GetTargetPart(CurrentTarget.Character)
+                local myHead = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+                if targetPart and myHead then
+                    local predicted = PredictPosition(targetPart, EnableWallBang)
+                    if EnableWallBang then
+                        if args[5] and args[5][1] and args[5][1][1] then
+                            args[5][1][1].Instance = targetPart
+                            args[5][1][1].Position = predicted
+                        end
+                        args[4] = CFrame.new(math.huge, math.huge, math.huge)
+                    else
+                        if args[5] and args[5][1] and args[5][1][1] then
+                            args[5][1][1].Instance = targetPart
+                            args[5][1][1].Position = predicted
+                        end
+                    end
+                    SpawnDebugBullet(myHead.Position, predicted)
+                end
+            end
+        end
+    end
+    return oldFire(self, unpack(args))
+end)
+
+RunService.RenderStepped:Connect(function()
+    local closestTarget = SilentAimEnabled and GetClosestTarget() or nil
+    local viewportCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    FOVCircle.Visible = showFov
+    if showFov then
+        FOVCircle.Position = viewportCenter
+    end
+    if SilentAimEnabled and closestTarget and closestTarget.Character then
+        local humanoid = closestTarget.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid and humanoid.Health > 0 then
+            local myHead = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+            local aimPart = GetTargetPart(closestTarget.Character)
+            if myHead and aimPart then
+                local screenStart, onScreenStart = Camera:WorldToViewportPoint(myHead.Position)
+                local screenEnd, onScreenEnd = Camera:WorldToViewportPoint(aimPart.Position)
+                if onScreenStart and onScreenEnd then
+                    tracerLine.From = Vector2.new(screenStart.X, screenStart.Y)
+                    tracerLine.To = Vector2.new(screenEnd.X, screenEnd.Y)
+                    tracerLine.Thickness = 2
+                    tracerLine.Color = Color3.fromRGB(255,0,0)
+                    tracerLine.Visible = true
+                else
+                    tracerLine.Visible = false
+                end
+            else
+                tracerLine.Visible = false
+            end
+        else
+            tracerLine.Visible = false
+        end
+    else
+        tracerLine.Visible = false
+    end
+end)
+------------------------------------------------
+-- ========== DROPPED ITEM ESP ==========
+------------------------------------------------
+local DroppedFolder = Workspace:WaitForChild("DroppedItems")
+local ItemESPs = {}
+local ItemESPEnabled = false
+
+local BlueColor  = Color3.fromRGB(0,150,255)
+local GreenColor = Color3.fromRGB(0,255,0)
+
+local function getItemColor(item)
+    return item.Name:lower():find("money") and GreenColor or BlueColor
+end
+
+local function createItemESP(item)
+    if not ItemESPEnabled or ItemESPs[item] then return end
+    local color = getItemColor(item)
+    local hls = {}
+
+    for _, p in ipairs(item:IsA("Model") and item:GetDescendants() or {item}) do
+        if p:IsA("BasePart") then
+            local hl = Instance.new("Highlight")
+            hl.Adornee = p
+            hl.FillColor = color
+            hl.OutlineColor = color
+            hl.FillTransparency = 0.7
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent = p
+            table.insert(hls, hl)
+        end
+    end
+
+    local base = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+    local label
+    if base then
+        local bb = Instance.new("BillboardGui", base)
+        bb.Size = UDim2.new(0,60,0,18)
+        bb.StudsOffset = Vector3.new(0, base.Size.Y+1, 0)
+        bb.AlwaysOnTop = true
+
+        label = Instance.new("TextLabel", bb)
+        label.Size = UDim2.fromScale(1,1)
+        label.BackgroundTransparency = 1
+        label.Text = "["..item.Name.."]"
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.TextColor3 = color
+    end
+
+    ItemESPs[item] = {hls=hls, label=label}
+end
+
+local function removeItemESP(item)
+    local d = ItemESPs[item]
+    if not d then return end
+    for _, hl in ipairs(d.hls) do hl:Destroy() end
+    if d.label then d.label.Parent:Destroy() end
+    ItemESPs[item] = nil
+end
+
+DroppedFolder.ChildAdded:Connect(function(i)
+    task.wait(.1)
+    createItemESP(i)
+end)
+DroppedFolder.ChildRemoved:Connect(removeItemESP)
+
+------------------------------------------------
+-- ========== PLAYER ESP ==========
+------------------------------------------------
+local PlayerESP = {}
+local ShowBoxESP, ShowNameESP, ShowHealthESP = false, false, false
+
+local function createESP(player)
+    if player == LocalPlayer or PlayerESP[player] then return end
+
+    local box = {
+        TL=Drawing.new("Line"), TR=Drawing.new("Line"),
+        BL=Drawing.new("Line"), BR=Drawing.new("Line"),
+    }
+    for _,l in pairs(box) do
+        l.Thickness = 2
+        l.Color = Color3.fromRGB(0,255,0)
+        l.Visible = false
+    end
+
+    local name = Drawing.new("Text")
+    name.Size = 16
+    name.Center = true
+    name.Outline = true
+    name.Color = Color3.new(1,1,1)
+    name.Visible = false
+
+    local hp = Drawing.new("Line")
+    hp.Thickness = 3
+    hp.Color = Color3.fromRGB(0,255,0)
+    hp.Visible = false
+
+    PlayerESP[player] = {Box=box, Name=name, HP=hp}
+end
+
+local function removeESP(player)
+    local d = PlayerESP[player]
+    if not d then return end
+    for _,l in pairs(d.Box) do l:Remove() end
+    d.Name:Remove()
+    d.HP:Remove()
+    PlayerESP[player] = nil
+end
+
+RunService.RenderStepped:Connect(function()
+    for p,d in pairs(PlayerESP) do
+        local c = p.Character
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+        local hum = c and c:FindFirstChild("Humanoid")
+        if not hrp or not hum or hum.Health<=0 then removeESP(p) continue end
+
+        local pos,vis = Camera:WorldToViewportPoint(hrp.Position)
+        if not vis then
+            for _,l in pairs(d.Box) do l.Visible=false end
+            d.Name.Visible=false d.HP.Visible=false
+            continue
+        end
+
+        local top = Camera:WorldToViewportPoint(hrp.Position+Vector3.new(0,3,0))
+        local bot = Camera:WorldToViewportPoint(hrp.Position-Vector3.new(0,3,0))
+        local h = math.abs(top.Y-bot.Y)
+        local w = h/2
+        local x,y = pos.X-w/2, pos.Y-h/2
+
+        if ShowBoxESP then
+            d.Box.TL.From=Vector2.new(x,y) d.Box.TL.To=Vector2.new(x+w,y)
+            d.Box.TR.From=Vector2.new(x+w,y) d.Box.TR.To=Vector2.new(x+w,y+h)
+            d.Box.BL.From=Vector2.new(x,y) d.Box.BL.To=Vector2.new(x,y+h)
+            d.Box.BR.From=Vector2.new(x,y+h) d.Box.BR.To=Vector2.new(x+w,y+h)
+            for _,l in pairs(d.Box) do l.Visible=true end
+        else for _,l in pairs(d.Box) do l.Visible=false end end
+
+        if ShowNameESP then
+            d.Name.Text=p.Name
+            d.Name.Position=Vector2.new(pos.X,y-15)
+            d.Name.Visible=true
+        else d.Name.Visible=false end
+
+        if ShowHealthESP then
+            local hp = hum.Health/hum.MaxHealth
+            d.HP.From=Vector2.new(x-6,y+h)
+            d.HP.To=Vector2.new(x-6,y+h*(1-hp))
+            d.HP.Visible=true
+        else d.HP.Visible=false end
+    end
+end)
+
+for _,p in ipairs(Players:GetPlayers()) do createESP(p) end
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
+
+------------------------------------------------
+-- ========== ESP TAB TOGGLES ==========
+------------------------------------------------
+EspTab:Toggle({Title="Dropped Items ESP", Callback=function(v)
+    ItemESPEnabled=v
+    if not v then for i in pairs(ItemESPs) do removeItemESP(i) end
+    else for _,i in ipairs(DroppedFolder:GetChildren()) do createItemESP(i) end end
+end})
+
+EspTab:Toggle({Title="Player Box ESP", Callback=function(v) ShowBoxESP=v end})
+EspTab:Toggle({Title="Player Name ESP", Callback=function(v) ShowNameESP=v end})
+EspTab:Toggle({Title="Player Health ESP", Callback=function(v) ShowHealthESP=v end})
