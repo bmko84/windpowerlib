@@ -1,14 +1,18 @@
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-
+-- โหลด WindUI
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+-- สร้าง Window
 local Window = WindUI:CreateWindow({
     Title = "bmegono1",
     Icon = "zap",
     Author = "bmegono1",
     Folder = "MySuperHub",
+
     Size = UDim2.fromOffset(580, 460),
     MinSize = Vector2.new(560, 350),
     MaxSize = Vector2.new(850, 560),
@@ -19,6 +23,7 @@ local Window = WindUI:CreateWindow({
     BackgroundImageTransparency = 0.42,
     HideSearchBar = true,
     ScrollBarEnabled = false,
+
     User = {
         Enabled = true,
         Anonymous = false,
@@ -30,10 +35,18 @@ local Window = WindUI:CreateWindow({
     },
 })
 
+-- ป้ายแดง Free
+Window:Tag({
+    Title = "Paid",
+    Icon = "lock-open",
+    Color = Color3.fromHex("#FF0000")
+})
+
+-- Tabs (UI เท่านั้น)
 local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
-local EspTab    = Window:Tab({Title = "ESP", Icon = "eye"})
+local EspTab = Window:Tab({Title = "ESP", Icon = "eye"})
 local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
-local MiscTab   = Window:Tab({Title = "Misc", Icon = "cog"})
+local MiscTab = Window:Tab({Title = "Misc", Icon = "cog"})
 
 
 ------------------------------------------------
@@ -546,3 +559,259 @@ end})
 EspTab:Toggle({Title="Player Box ESP", Callback=function(v) ShowBoxESP=v end})
 EspTab:Toggle({Title="Player Name ESP", Callback=function(v) ShowNameESP=v end})
 EspTab:Toggle({Title="Player Health ESP", Callback=function(v) ShowHealthESP=v end})
+----------------------------------------------------------------
+-- HUD FPS / Ping / Players
+----------------------------------------------------------------
+local hudText = MiscTab:Paragraph({
+    Title = "",
+    Desc = "",
+})
+
+local lastUpdate = tick()
+local frameCount = 0
+local fps = 0
+
+local function color(text, hex)
+    return string.format('<font color="%s">%s</font>', hex, text)
+end
+
+local function divider()
+    return color(" | ", "#AAAAAA")
+end
+
+RunService.RenderStepped:Connect(function()
+    frameCount += 1
+    if tick() - lastUpdate >= 1 then
+        fps = frameCount / (tick() - lastUpdate)
+        frameCount = 0
+        lastUpdate = tick()
+    end
+
+    local ping = math.floor(player:GetNetworkPing() * 1000)
+    local playerCount = #Players:GetPlayers()
+
+    local text = table.concat({
+        color("FPS: "..math.floor(fps), "#00FF00"),
+        divider(),
+        color("Ping: "..ping.."ms", "#00BFFF"),
+        divider(),
+        color("Players: "..playerCount, "#FFFF00")
+    })
+
+    hudText:SetTitle(text)
+end)
+
+----------------------------------------------------------------
+-- Teleport to JobId
+----------------------------------------------------------------
+MiscTab:Input({
+    Title = "Teleport to JobId",
+    Placeholder = "Enter JobId...",
+    Callback = function(jobid)
+        if jobid and jobid ~= "" then
+            TeleportService:TeleportToPlaceInstance(placeId, jobid, player)
+            WindUI:Notify({
+                Title = "Teleport",
+                Content = "Teleporting to JobId...",
+                Color = Color3.fromRGB(0, 162, 255)
+            })
+        end
+    end
+})
+
+----------------------------------------------------------------
+-- Copy JobId
+----------------------------------------------------------------
+MiscTab:Button({
+    Title = "Copy Current JobId",
+    Callback = function()
+        if game.JobId then
+            pcall(function()
+                setclipboard(game.JobId)
+            end)
+            WindUI:Notify({
+                Title = "Copied",
+                Content = "JobId copied to clipboard",
+                Color = Color3.fromRGB(0, 255, 0)
+            })
+        end
+    end
+})
+
+----------------------------------------------------------------
+-- Server Hop
+----------------------------------------------------------------
+local function GetServers()
+    local servers = {}
+    local cursor = nil
+
+    repeat
+        local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?limit=100"
+        if cursor then
+            url ..= "&cursor="..cursor
+        end
+
+        local success, res = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if not success then break end
+
+        local data = HttpService:JSONDecode(res)
+        for _, s in ipairs(data.data) do
+            if s.playing < s.maxPlayers then
+                table.insert(servers, s)
+            end
+        end
+
+        cursor = data.nextPageCursor
+    until not cursor
+
+    return servers
+end
+
+local function HopServer()
+    local servers = GetServers()
+    for _, s in ipairs(servers) do
+        if not visitedServers[s.id] then
+            visitedServers[s.id] = true
+            TeleportService:TeleportToPlaceInstance(placeId, s.id, player)
+            WindUI:Notify({
+                Title = "Hop Server",
+                Content = "Hopping server...",
+                Color = Color3.fromRGB(255, 162, 0)
+            })
+            return
+        end
+    end
+
+    WindUI:Notify({
+        Title = "Hop Server",
+        Content = "No available server",
+        Color = Color3.fromRGB(255, 0, 0)
+    })
+end
+
+MiscTab:Button({
+    Title = "Hop Server",
+    Callback = HopServer
+})
+
+----------------------------------------------------------------
+-- Rejoin Server
+----------------------------------------------------------------
+MiscTab:Button({
+    Title = "Rejoin Server",
+    Callback = function()
+        TeleportService:Teleport(placeId, player)
+        WindUI:Notify({
+            Title = "Rejoin",
+            Content = "Rejoining server...",
+            Color = Color3.fromRGB(0, 162, 255)
+        })
+    end
+})
+------------------------------------------------
+-- BURROW SYSTEM (มุดดิน)
+------------------------------------------------
+local burrowEnabled = false
+local burrowDepth = 8
+local burrowConnection
+local baseY
+
+local function getChar() return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() end
+local function getHumanoid() return getChar():WaitForChild("Humanoid") end
+local function getRoot() return getChar():WaitForChild("HumanoidRootPart") end
+
+local function startBurrow()
+    local root = getRoot()
+    baseY = root.Position.Y
+
+    if burrowConnection then burrowConnection:Disconnect() end
+
+    burrowConnection = RunService.Heartbeat:Connect(function()
+        if not burrowEnabled or not root.Parent then return end
+        local targetY = baseY - burrowDepth
+        root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X,0,root.AssemblyLinearVelocity.Z)
+        root.CFrame = CFrame.new(root.Position.X,targetY,root.Position.Z)
+    end)
+end
+
+local function stopBurrow()
+    if burrowConnection then
+        burrowConnection:Disconnect()
+        burrowConnection = nil
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    if burrowEnabled then startBurrow() end
+end)
+
+PlayerTab:Toggle({
+    Title = "มุดดิน",
+    Default = false,
+    Callback = function(state)
+        burrowEnabled = state
+        if state then startBurrow() else stopBurrow() end
+    end
+})
+
+PlayerTab:Slider({
+    Title = "ความลึกมุดดิน",
+    Value = {Min=1, Max=50, Default=burrowDepth},
+    Step = 1,
+    Callback = function(value)
+        burrowDepth = tonumber(value)
+    end
+})
+
+------------------------------------------------
+-- HIGH JUMP SYSTEM (โดดสูง)
+------------------------------------------------
+local highJumpEnabled = false
+local defaultJumpPower = 60
+local maxJumpPower = 80
+local highJumpPower = 100
+
+local function setJumpPower(power)
+    local hum = getHumanoid()
+    if hum then
+        hum.UseJumpPower = true
+        hum.JumpPower = math.clamp(power, 0, maxJumpPower)
+    end
+end
+
+PlayerTab:Toggle({
+    Title = "โดดสูง",
+    Default = false,
+    Callback = function(state)
+        highJumpEnabled = state
+        if state then
+            setJumpPower(highJumpPower)
+        else
+            setJumpPower(defaultJumpPower)
+        end
+    end
+})
+
+PlayerTab:Slider({
+    Title = "ความสูงโดด",
+    Value = {Min=60, Max=maxJumpPower, Default=highJumpPower},
+    Step = 1,
+    Callback = function(value)
+        highJumpPower = tonumber(value)
+        if highJumpEnabled then setJumpPower(highJumpPower) end
+    end
+})
+
+-- ตั้งค่าเริ่มต้นเมื่อเข้าห้อง
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.1)
+    if highJumpEnabled then
+        setJumpPower(highJumpPower)
+    else
+        setJumpPower(defaultJumpPower)
+    end
+end)
