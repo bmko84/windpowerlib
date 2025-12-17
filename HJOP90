@@ -779,9 +779,9 @@ PlayerTab:Slider({
 -- HIGH JUMP SYSTEM (โดดสูง)
 ------------------------------------------------
 local highJumpEnabled = false
-local defaultJumpPower = 60
+local defaultJumpPower = 10
 local maxJumpPower = 80
-local highJumpPower = 100
+local highJumpPower = 60
 
 local function setJumpPower(power)
     local hum = getHumanoid()
@@ -806,7 +806,7 @@ PlayerTab:Toggle({
 
 PlayerTab:Slider({
     Title = "ความสูงโดด",
-    Value = {Min=60, Max=maxJumpPower, Default=highJumpPower},
+    Value = {Min=10, Max=maxJumpPower, Default=highJumpPower},
     Step = 1,
     Callback = function(value)
         highJumpPower = tonumber(value)
@@ -823,3 +823,101 @@ LocalPlayer.CharacterAdded:Connect(function(char)
         setJumpPower(defaultJumpPower)
     end
 end)
+------------------------------------------------
+-- PLAYER TAB : โหมดกันล็อก
+------------------------------------------------
+local antiConn
+local t, spin, sinkTimer = 0, 0, 0
+local sinking = false
+
+local function startAnti()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    antiConn = RunService.RenderStepped:Connect(function(dt)
+        t += dt * 35
+        spin += dt * math.rad(900)
+        sinkTimer += dt
+
+        local shake = math.sin(t) * math.rad(16)      -- ตูดสั่น
+        local sway  = math.sin(t * 0.8) * math.rad(7) -- เดินเหวี่ยง
+
+        if sinkTimer >= 0.5 then
+            sinking = not sinking
+            sinkTimer = 0
+        end
+
+        local yOffset = sinking and -0.9 or 0
+
+        hrp.CFrame =
+            hrp.CFrame *
+            CFrame.new(0, yOffset * dt * 10, 0) *
+            CFrame.Angles(sway, spin + shake, 0)
+    end)
+end
+
+local function stopAnti()
+    if antiConn then
+        antiConn:Disconnect()
+        antiConn = nil
+    end
+end
+
+PlayerTab:Toggle({
+    Title = "โหมดกันล็อก",
+    Desc = "หมุนทั้งตัว + ตูดสั่นแรง + เดินเหวี่ยง + จมขึ้นลง",
+    Default = false,
+    Callback = function(state)
+        if state then
+            startAnti()
+        else
+            stopAnti()
+        end
+    end
+})
+
+------------------------------------------------
+-- PLAYER TAB : ซิ่งเร็ว (วาร์ป)
+------------------------------------------------
+local speedConn
+local warpDistance = 0.4
+local warpCooldown = 0.05
+local lastWarp = 0
+
+local function startSpeed()
+    speedConn = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not hrp or not hum then return end
+
+        if tick() - lastWarp >= warpCooldown then
+            if hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * warpDistance
+                lastWarp = tick()
+            end
+        end
+    end)
+end
+
+local function stopSpeed()
+    if speedConn then
+        speedConn:Disconnect()
+        speedConn = nil
+    end
+end
+
+PlayerTab:Toggle({
+    Title = "ซิ่งเร็ว",
+    Desc = "เดินแล้ววาร์ปไปข้างหน้า",
+    Default = false,
+    Callback = function(state)
+        if state then
+            startSpeed()
+        else
+            stopSpeed()
+        end
+    end
+})
