@@ -719,61 +719,6 @@ MiscTab:Button({
         })
     end
 })
-------------------------------------------------
--- BURROW SYSTEM (มุดดิน)
-------------------------------------------------
-local burrowEnabled = false
-local burrowDepth = 8
-local burrowConnection
-local baseY
-
-local function getChar() return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() end
-local function getHumanoid() return getChar():WaitForChild("Humanoid") end
-local function getRoot() return getChar():WaitForChild("HumanoidRootPart") end
-
-local function startBurrow()
-    local root = getRoot()
-    baseY = root.Position.Y
-
-    if burrowConnection then burrowConnection:Disconnect() end
-
-    burrowConnection = RunService.Heartbeat:Connect(function()
-        if not burrowEnabled or not root.Parent then return end
-        local targetY = baseY - burrowDepth
-        root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X,0,root.AssemblyLinearVelocity.Z)
-        root.CFrame = CFrame.new(root.Position.X,targetY,root.Position.Z)
-    end)
-end
-
-local function stopBurrow()
-    if burrowConnection then
-        burrowConnection:Disconnect()
-        burrowConnection = nil
-    end
-end
-
-LocalPlayer.CharacterAdded:Connect(function()
-    task.wait(0.2)
-    if burrowEnabled then startBurrow() end
-end)
-
-PlayerTab:Toggle({
-    Title = "มุดดิน",
-    Default = false,
-    Callback = function(state)
-        burrowEnabled = state
-        if state then startBurrow() else stopBurrow() end
-    end
-})
-
-PlayerTab:Slider({
-    Title = "ความลึกมุดดิน",
-    Value = {Min=1, Max=50, Default=burrowDepth},
-    Step = 1,
-    Callback = function(value)
-        burrowDepth = tonumber(value)
-    end
-})
 
 ------------------------------------------------
 -- HIGH JUMP SYSTEM (โดดสูง)
@@ -792,7 +737,7 @@ local function setJumpPower(power)
 end
 
 PlayerTab:Toggle({
-    Title = "โดดสูง",
+    Title = "Jump",
     Default = false,
     Callback = function(state)
         highJumpEnabled = state
@@ -910,7 +855,7 @@ local function stopSpeed()
 end
 
 PlayerTab:Toggle({
-    Title = "วิ่งเร็ว",
+    Title = "Speed",
     Desc = "",
     Default = false,
     Callback = function(state)
@@ -942,9 +887,231 @@ end)
 
 PlayerTab:Toggle({
     Title = "Infinity Stamina",
-    Desc = "Unlimited sprint stamina",
+    Desc = "",
     Default = false,
     Callback = function(v)
         getgenv().Infinitestamina = v
+    end
+})
+------------------------------------------------
+-- PLAYER TAB : ANTI-DEAD + ITEM MAGNET
+------------------------------------------------
+
+------------------------------------------------
+-- [1] Anti-Dead System
+------------------------------------------------
+local antiDeadEnabled = false
+local isAntiDead = false
+local depth = 3
+local fakeChar
+
+local function getCharData()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid")
+    local root = char:WaitForChild("HumanoidRootPart")
+    return char, hum, root
+end
+
+local function forceDownReal(root, hum, char)
+    root.CFrame = root.CFrame - Vector3.new(0, depth, 0)
+    root.Velocity = Vector3.zero
+    root.AssemblyLinearVelocity = Vector3.zero
+    hum.PlatformStand = true
+    for _, p in ipairs(char:GetChildren()) do
+        if p:IsA("BasePart") then
+            p.CanCollide = false
+        end
+    end
+end
+
+local function createFakeCharacter(root)
+    local dummy = Instance.new("Model")
+    dummy.Name = player.Name .. "_Fake"
+
+    local hrp = Instance.new("Part")
+    hrp.Name = "HumanoidRootPart"
+    hrp.Size = Vector3.new(2,2,1)
+    hrp.Anchored = true
+    hrp.CanCollide = true
+    hrp.CFrame = root.CFrame
+    hrp.Parent = dummy
+
+    Instance.new("Humanoid", dummy)
+    dummy.Parent = workspace
+    return dummy
+end
+
+local function startAntiDead()
+    if isAntiDead then return end
+    isAntiDead = true
+
+    local char, hum, root = getCharData()
+    fakeChar = createFakeCharacter(root)
+    local fakeRoot = fakeChar:FindFirstChild("HumanoidRootPart")
+
+    task.spawn(function()
+        while antiDeadEnabled and hum.Health > 0 and hum.Health <= 21 do
+            forceDownReal(root, hum, char)
+
+            root.CFrame *= CFrame.Angles(0, math.rad(50), 0)
+            if fakeRoot then
+                fakeRoot.CFrame = root.CFrame + Vector3.new(0, depth, 0)
+            end
+
+            RunService.Heartbeat:Wait()
+        end
+
+        if fakeChar then fakeChar:Destroy() end
+        hum.PlatformStand = false
+        for _, p in ipairs(char:GetChildren()) do
+            if p:IsA("BasePart") then
+                p.CanCollide = true
+            end
+        end
+        root.CFrame += Vector3.new(0, depth + 2, 0)
+        isAntiDead = false
+    end)
+end
+
+local function hookAntiDead(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.HealthChanged:Connect(function(hp)
+        if not antiDeadEnabled then return end
+        if hp <= 21 and not isAntiDead then
+            startAntiDead()
+        end
+    end)
+end
+
+if player.Character then
+    hookAntiDead(player.Character)
+end
+player.CharacterAdded:Connect(hookAntiDead)
+
+-- UI Toggle
+PlayerTab:Toggle({
+    Title = "Anti-Dead",
+    Desc = "Fall underground & fake body when low HP",
+    Default = false,
+    Callback = function(v)
+        antiDeadEnabled = v
+    end
+})
+
+------------------------------------------------
+-- [2] Item Magnet (ดูดของ)
+------------------------------------------------
+local magnetEnabled = false
+
+local CLIENT_ZONE_SIZE = Vector3.new(120, 14, 120)
+local SERVER_FAKE_RADIUS = 4000
+local MAGNET_SPEED = 0.9
+
+local remoteGet = ReplicatedStorage
+    :WaitForChild("Remotes")
+    :WaitForChild("Get")
+
+local function resizeZones()
+    if not workspace:FindFirstChild("DroppedItems") then return end
+    for _, item in ipairs(workspace.DroppedItems:GetChildren()) do
+        local zone = item:FindFirstChild("PickUpZone")
+        if zone and zone:IsA("BasePart") then
+            zone.Size = CLIENT_ZONE_SIZE
+            zone.Transparency = 1
+            zone.CanCollide = false
+            zone.Anchored = true
+        end
+    end
+end
+
+resizeZones()
+if workspace:FindFirstChild("DroppedItems") then
+    workspace.DroppedItems.ChildAdded:Connect(resizeZones)
+end
+
+RunService.Heartbeat:Connect(function()
+    if not magnetEnabled then return end
+
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp or not workspace:FindFirstChild("DroppedItems") then return end
+
+    for _, item in ipairs(workspace.DroppedItems:GetChildren()) do
+        local prompt = item:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if not prompt then continue end
+
+        if (hrp.Position - item.Position).Magnitude <= SERVER_FAKE_RADIUS then
+            remoteGet:InvokeServer("pickup_dropped_item", item)
+
+            local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+            if part then
+                part.CFrame = part.CFrame:Lerp(CFrame.new(hrp.Position), MAGNET_SPEED)
+            end
+        end
+    end
+end)
+
+-- UI Toggle
+PlayerTab:Toggle({
+    Title = "ดูดของ (Item Magnet)",
+    Desc = "Auto pickup dropped items",
+    Default = false,
+    Callback = function(v)
+        magnetEnabled = v
+    end
+})
+------------------------------------------------
+-- BURROW SYSTEM (มุดดิน)
+------------------------------------------------
+local burrowEnabled = false
+local burrowDepth = 8
+local burrowConnection
+local baseY
+
+local function getChar() return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() end
+local function getHumanoid() return getChar():WaitForChild("Humanoid") end
+local function getRoot() return getChar():WaitForChild("HumanoidRootPart") end
+
+local function startBurrow()
+    local root = getRoot()
+    baseY = root.Position.Y
+
+    if burrowConnection then burrowConnection:Disconnect() end
+
+    burrowConnection = RunService.Heartbeat:Connect(function()
+        if not burrowEnabled or not root.Parent then return end
+        local targetY = baseY - burrowDepth
+        root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X,0,root.AssemblyLinearVelocity.Z)
+        root.CFrame = CFrame.new(root.Position.X,targetY,root.Position.Z)
+    end)
+end
+
+local function stopBurrow()
+    if burrowConnection then
+        burrowConnection:Disconnect()
+        burrowConnection = nil
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    if burrowEnabled then startBurrow() end
+end)
+
+PlayerTab:Toggle({
+    Title = "มุดดิน",
+    Default = false,
+    Callback = function(state)
+        burrowEnabled = state
+        if state then startBurrow() else stopBurrow() end
+    end
+})
+
+PlayerTab:Slider({
+    Title = "ความลึกมุดดิน",
+    Value = {Min=1, Max=50, Default=burrowDepth},
+    Step = 1,
+    Callback = function(value)
+        burrowDepth = tonumber(value)
     end
 })
