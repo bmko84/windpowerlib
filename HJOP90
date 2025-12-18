@@ -864,8 +864,8 @@ local function stopAnti()
 end
 
 PlayerTab:Toggle({
-    Title = "โหมดกันล็อก",
-    Desc = "หมุนทั้งตัว + ตูดสั่นแรง + เดินเหวี่ยง + จมขึ้นลง",
+    Title = "Anti-lock",
+    Desc = "",
     Default = false,
     Callback = function(state)
         if state then
@@ -910,8 +910,8 @@ local function stopSpeed()
 end
 
 PlayerTab:Toggle({
-    Title = "ซิ่งเร็ว",
-    Desc = "เดินแล้ววาร์ปไปข้างหน้า",
+    Title = "วิ่งเร็ว",
+    Desc = "",
     Default = false,
     Callback = function(state)
         if state then
@@ -919,5 +919,32 @@ PlayerTab:Toggle({
         else
             stopSpeed()
         end
+    end
+})
+------------------------------------------------
+-- PLAYER TAB : INFINITY STAMINA
+------------------------------------------------
+local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+local consume_stamina = SprintModule.consume_stamina
+local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
+
+getgenv().Infinitestamina = false
+
+local Old
+Old = hookfunction(SprintBar.update, function(...)
+    if getgenv().Infinitestamina then
+        return Old(function()
+            return 1
+        end)
+    end
+    return Old(...)
+end)
+
+PlayerTab:Toggle({
+    Title = "Infinity Stamina",
+    Desc = "Unlimited sprint stamina",
+    Default = false,
+    Callback = function(v)
+        getgenv().Infinitestamina = v
     end
 })
