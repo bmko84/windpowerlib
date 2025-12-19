@@ -55,6 +55,7 @@ local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
 local EspTab = Window:Tab({Title = "ESP", Icon = "eye"})
 local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
 local MiscTab = Window:Tab({Title = "Misc", Icon = "cog"})
+local ConfigTab = Window:Tab({Title = "Config", Icon = "save"})
 
 
 ------------------------------------------------
@@ -720,54 +721,7 @@ MiscTab:Button({
     end
 })
 
-------------------------------------------------
--- HIGH JUMP SYSTEM (โดดสูง)
-------------------------------------------------
-local highJumpEnabled = false
-local defaultJumpPower = 10
-local maxJumpPower = 80
-local highJumpPower = 60
-
-local function setJumpPower(power)
-    local hum = getHumanoid()
-    if hum then
-        hum.UseJumpPower = true
-        hum.JumpPower = math.clamp(power, 0, maxJumpPower)
-    end
-end
-
-PlayerTab:Toggle({
-    Title = "Jump",
-    Default = false,
-    Callback = function(state)
-        highJumpEnabled = state
-        if state then
-            setJumpPower(highJumpPower)
-        else
-            setJumpPower(defaultJumpPower)
-        end
-    end
-})
-
-PlayerTab:Slider({
-    Title = "ความสูงโดด",
-    Value = {Min=10, Max=maxJumpPower, Default=highJumpPower},
-    Step = 1,
-    Callback = function(value)
-        highJumpPower = tonumber(value)
-        if highJumpEnabled then setJumpPower(highJumpPower) end
-    end
-})
-
--- ตั้งค่าเริ่มต้นเมื่อเข้าห้อง
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.1)
-    if highJumpEnabled then
-        setJumpPower(highJumpPower)
-    else
-        setJumpPower(defaultJumpPower)
-    end
-end)
+-
 ------------------------------------------------
 -- PLAYER TAB : โหมดกันล็อก
 ------------------------------------------------
@@ -820,7 +774,124 @@ PlayerTab:Toggle({
         end
     end
 })
+------------------------------------------------
+-- HIGH JUMP SYSTEM
+------------------------------------------------
+local HighJumpEnabled = false
+local HighJumpPower = 70
+local DEFAULT_JUMP = 20
 
+local function GetHumanoid()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    return char:WaitForChild("Humanoid")
+end
+
+local function ApplyJump()
+    local hum = GetHumanoid()
+    hum.UseJumpPower = true
+
+    if HighJumpEnabled then
+        hum.JumpPower = HighJumpPower
+    else
+        hum.JumpPower = DEFAULT_JUMP
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    ApplyJump()
+end)
+
+------------------------------------------------
+-- PLAYER TAB UI (⚠️ ใส่ Flag)
+------------------------------------------------
+PlayerTab:Toggle({
+    Title = "โดดสูง",
+    Desc = "Enable High Jump",
+    Flag = "HighJumpEnabled",
+    Default = false,
+    Callback = function(v)
+        HighJumpEnabled = v
+        ApplyJump()
+    end
+})
+
+PlayerTab:Slider({
+    Title = "พลังโดด",
+    Desc = "High Jump Power",
+    Flag = "HighJumpPower",
+    Step = 1,
+    Value = {
+        Min = 20,
+        Max = 120,
+        Default = 70
+    },
+    Callback = function(v)
+        HighJumpPower = tonumber(v)
+        ApplyJump()
+    end
+})
+
+------------------------------------------------
+-- CONFIG MANAGER
+------------------------------------------------
+local ConfigManager = Window.ConfigManager
+local AutoSaveName = "MyAutoConfig"
+local Loaded = false
+
+local function Notify(title, content, icon)
+    WindUI:Notify({
+        Title = title,
+        Content = content,
+        Duration = 1.5,
+        Icon = icon or "zap"
+    })
+end
+
+ConfigTab:Button({
+    Title = "Save Config",
+    Icon = "save",
+    Callback = function()
+        pcall(function()
+            local old = ConfigManager:CreateConfig(AutoSaveName)
+            old:Delete()
+        end)
+
+        local cfg = ConfigManager:CreateConfig(AutoSaveName)
+        cfg:Save()
+
+        Notify("Config", "Saved Successfully", "save")
+    end
+})
+
+------------------------------------------------
+-- AUTO LOAD CONFIG + APPLY
+------------------------------------------------
+task.spawn(function()
+    task.wait(2)
+
+    if Loaded then return end
+    Loaded = true
+
+    Notify("Config", "Loading Config...", "clock")
+
+    local success, err = pcall(function()
+        local cfg = ConfigManager:CreateConfig(AutoSaveName)
+        cfg:Load()
+    end)
+
+    if success then
+        -- 🔥 ดึงค่า Flag หลังโหลด
+        HighJumpEnabled = WindUI.Flags.HighJumpEnabled
+        HighJumpPower = WindUI.Flags.HighJumpPower
+
+        ApplyJump()
+
+        Notify("Config", "Loaded Successfully", "check")
+    else
+        Notify("Config", "Load Failed", "alert")
+    end
+end)
 ------------------------------------------------
 -- PLAYER TAB : ซิ่งเร็ว (วาร์ป)
 ------------------------------------------------
