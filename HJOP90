@@ -55,7 +55,6 @@ local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
 local EspTab = Window:Tab({Title = "ESP", Icon = "eye"})
 local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
 local MiscTab = Window:Tab({Title = "Misc", Icon = "cog"})
-local ConfigTab = Window:Tab({Title = "Config", Icon = "save"})
 
 
 ------------------------------------------------
@@ -1068,4 +1067,3 @@ PlayerTab:Slider({
         burrowDepth = tonumber(value)
     end
 })
-------
