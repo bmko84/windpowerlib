@@ -1191,7 +1191,8 @@ player.CharacterAdded:Connect(hookAntiDead)
 -- UI Toggle
 PlayerTab:Toggle({
     Title = "Anti-Dead",
-    Desc = "Fall underground & fake body when low HP",
+    Desc = "",
+    Flag = "AntiDead",
     Default = false,
     Callback = function(v)
         antiDeadEnabled = v
