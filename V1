@@ -885,6 +885,7 @@ end)
 ------------------------------------------------
 EspTab:Toggle({
     Title = "Show Weapon",
+    Flag = "WeaponESP",
     Default = false,
     Callback = function(state)
         ItemESP_Enabled = state
