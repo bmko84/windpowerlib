@@ -1314,3 +1314,86 @@ PlayerTab:Toggle({
         end
     end
 })
+-----------------------------------------------
+-- PLAYER TAB : INFINITY STAMINA
+------------------------------------------------
+local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+local consume_stamina = SprintModule.consume_stamina
+local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
+
+getgenv().Infinitestamina = false
+
+local Old
+Old = hookfunction(SprintBar.update, function(...)
+    if getgenv().Infinitestamina then
+        return Old(function()
+            return 1
+        end)
+    end
+    return Old(...)
+end)
+
+PlayerTab:Toggle({
+    Title = "Infinity Stamina",
+    Desc = "",
+    Flag = "InfinityStamina",
+    Default = false,
+    Callback = function(v)
+        getgenv().Infinitestamina = v
+    end
+})
+------------------------------------------------
+-- BURROW SYSTEM (มุดดิน)
+------------------------------------------------
+local burrowEnabled = false
+local burrowDepth = 8
+local burrowConnection
+local baseY
+
+local function getChar() return LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait() end
+local function getHumanoid() return getChar():WaitForChild("Humanoid") end
+local function getRoot() return getChar():WaitForChild("HumanoidRootPart") end
+
+local function startBurrow()
+    local root = getRoot()
+    baseY = root.Position.Y
+
+    if burrowConnection then burrowConnection:Disconnect() end
+
+    burrowConnection = RunService.Heartbeat:Connect(function()
+        if not burrowEnabled or not root.Parent then return end
+        local targetY = baseY - burrowDepth
+        root.AssemblyLinearVelocity = Vector3.new(root.AssemblyLinearVelocity.X,0,root.AssemblyLinearVelocity.Z)
+        root.CFrame = CFrame.new(root.Position.X,targetY,root.Position.Z)
+    end)
+end
+
+local function stopBurrow()
+    if burrowConnection then
+        burrowConnection:Disconnect()
+        burrowConnection = nil
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    if burrowEnabled then startBurrow() end
+end)
+
+PlayerTab:Toggle({
+    Title = "มุดดิน",
+    Default = false,
+    Callback = function(state)
+        burrowEnabled = state
+        if state then startBurrow() else stopBurrow() end
+    end
+})
+
+PlayerTab:Slider({
+    Title = "ความลึกมุดดิน",
+    Value = {Min=1, Max=50, Default=burrowDepth},
+    Step = 1,
+    Callback = function(value)
+        burrowDepth = tonumber(value)
+    end
+})
