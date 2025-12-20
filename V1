@@ -1253,7 +1253,8 @@ end)
 -- UI Toggle
 PlayerTab:Toggle({
     Title = "ดูดของ (Item Magnet)",
-    Desc = "Auto pickup dropped items",
+    Desc = "",
+    Flag = "ItemMagnet",
     Default = false,
     Callback = function(v)
         magnetEnabled = v
