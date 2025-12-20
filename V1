@@ -563,15 +563,19 @@ Players.PlayerRemoving:Connect(removeESP)
 ------------------------------------------------
 -- ========== ESP TAB TOGGLES ==========
 ------------------------------------------------
-EspTab:Toggle({Title="Dropped Items ESP", Callback=function(v)
+EspTab:Toggle({Title="Dropped Items ESP", Flag = "DroppedItemESP",
+    Default = false, Callback=function(v)
     ItemESPEnabled=v
     if not v then for i in pairs(ItemESPs) do removeItemESP(i) end
     else for _,i in ipairs(DroppedFolder:GetChildren()) do createItemESP(i) end end
 end})
 
-EspTab:Toggle({Title="Player Box ESP", Callback=function(v) ShowBoxESP=v end})
-EspTab:Toggle({Title="Player Name ESP", Callback=function(v) ShowNameESP=v end})
-EspTab:Toggle({Title="Player Health ESP", Callback=function(v) ShowHealthESP=v end})
+EspTab:Toggle({Title="Player Box ESP",Flag = "PlayerBoxESP",
+    Default = false, Callback=function(v) ShowBoxESP=v end})
+EspTab:Toggle({Title="Player Name ESP",Flag = "PlayerNameESP",
+    Default = false, Callback=function(v) ShowNameESP=v end})
+EspTab:Toggle({Title="Player Health ESP",Flag = "PlayerHealthESP",
+    Default = false, Callback=function(v) ShowHealthESP=v end})
 ------------------------------------------------
 -- HIGH JUMP SYSTEM
 ------------------------------------------------
