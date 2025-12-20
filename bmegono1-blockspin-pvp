@@ -1,1 +1,1 @@
-hereเข้ามาดูทำเหี้ยไร
+loadstring(game:HttpGet("https://raw.githubusercontent.com/bmko84/windpowerlib/refs/heads/dev/JOPO901070", true))()
