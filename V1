@@ -896,3 +896,155 @@ EspTab:Toggle({
         end
     end
 })
+--------------------------------------------------------------
+-- HUD FPS / Ping / Players
+----------------------------------------------------------------
+local hudText = MiscTab:Paragraph({
+    Title = "",
+    Desc = "",
+})
+
+local lastUpdate = tick()
+local frameCount = 0
+local fps = 0
+
+local function color(text, hex)
+    return string.format('<font color="%s">%s</font>', hex, text)
+end
+
+local function divider()
+    return color(" | ", "#AAAAAA")
+end
+
+RunService.RenderStepped:Connect(function()
+    frameCount += 1
+    if tick() - lastUpdate >= 1 then
+        fps = frameCount / (tick() - lastUpdate)
+        frameCount = 0
+        lastUpdate = tick()
+    end
+
+    local ping = math.floor(player:GetNetworkPing() * 1000)
+    local playerCount = #Players:GetPlayers()
+
+    local text = table.concat({
+        color("FPS: "..math.floor(fps), "#00FF00"),
+        divider(),
+        color("Ping: "..ping.."ms", "#00BFFF"),
+        divider(),
+        color("Players: "..playerCount, "#FFFF00")
+    })
+
+    hudText:SetTitle(text)
+end)
+
+----------------------------------------------------------------
+-- Teleport to JobId
+----------------------------------------------------------------
+MiscTab:Input({
+    Title = "Teleport to JobId",
+    Placeholder = "Enter JobId...",
+    Callback = function(jobid)
+        if jobid and jobid ~= "" then
+            TeleportService:TeleportToPlaceInstance(placeId, jobid, player)
+            WindUI:Notify({
+                Title = "Teleport",
+                Content = "Teleporting to JobId...",
+                Color = Color3.fromRGB(0, 162, 255)
+            })
+        end
+    end
+})
+
+----------------------------------------------------------------
+-- Copy JobId
+----------------------------------------------------------------
+MiscTab:Button({
+    Title = "Copy Current JobId",
+    Callback = function()
+        if game.JobId then
+            pcall(function()
+                setclipboard(game.JobId)
+            end)
+            WindUI:Notify({
+                Title = "Copied",
+                Content = "JobId copied to clipboard",
+                Color = Color3.fromRGB(0, 255, 0)
+            })
+        end
+    end
+})
+
+----------------------------------------------------------------
+-- Server Hop
+----------------------------------------------------------------
+local function GetServers()
+    local servers = {}
+    local cursor = nil
+
+    repeat
+        local url = "https://games.roblox.com/v1/games/"..placeId.."/servers/Public?limit=100"
+        if cursor then
+            url ..= "&cursor="..cursor
+        end
+
+        local success, res = pcall(function()
+            return game:HttpGet(url)
+        end)
+
+        if not success then break end
+
+        local data = HttpService:JSONDecode(res)
+        for _, s in ipairs(data.data) do
+            if s.playing < s.maxPlayers then
+                table.insert(servers, s)
+            end
+        end
+
+        cursor = data.nextPageCursor
+    until not cursor
+
+    return servers
+end
+
+local function HopServer()
+    local servers = GetServers()
+    for _, s in ipairs(servers) do
+        if not visitedServers[s.id] then
+            visitedServers[s.id] = true
+            TeleportService:TeleportToPlaceInstance(placeId, s.id, player)
+            WindUI:Notify({
+                Title = "Hop Server",
+                Content = "Hopping server...",
+                Color = Color3.fromRGB(255, 162, 0)
+            })
+            return
+        end
+    end
+
+    WindUI:Notify({
+        Title = "Hop Server",
+        Content = "No available server",
+        Color = Color3.fromRGB(255, 0, 0)
+    })
+end
+
+MiscTab:Button({
+    Title = "Hop Server",
+    Callback = HopServer
+})
+
+----------------------------------------------------------------
+-- Rejoin Server
+----------------------------------------------------------------
+MiscTab:Button({
+    Title = "Rejoin Server",
+    Callback = function()
+        TeleportService:Teleport(placeId, player)
+        WindUI:Notify({
+            Title = "Rejoin",
+            Content = "Rejoining server...",
+            Color = Color3.fromRGB(0, 162, 255)
+        })
+    end
+})
