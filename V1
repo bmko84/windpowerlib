@@ -1302,6 +1302,7 @@ end
 PlayerTab:Toggle({
     Title = "Anti-lock",
     Desc = "",
+    Flag = "AntiLock",
     Default = false,
     Callback = function(state)
         if state then
