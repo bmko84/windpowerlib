@@ -608,8 +608,8 @@ end)
 -- PLAYER TAB UI (⚠️ ใส่ Flag)
 ------------------------------------------------
 PlayerTab:Toggle({
-    Title = "โดดสูง",
-    Desc = "Enable High Jump",
+    Title = "Jump",
+    Desc = "",
     Flag = "HighJumpEnabled",
     Default = false,
     Callback = function(v)
@@ -620,7 +620,7 @@ PlayerTab:Toggle({
 
 PlayerTab:Slider({
     Title = "พลังโดด",
-    Desc = "High Jump Power",
+    Desc = "",
     Flag = "HighJumpPower",
     Step = 1,
     Value = {
@@ -1046,5 +1046,50 @@ MiscTab:Button({
             Content = "Rejoining server...",
             Color = Color3.fromRGB(0, 162, 255)
         })
+    end
+})
+-----------------------------------------------
+-- PLAYER TAB : ซิ่งเร็ว (วาร์ป)
+------------------------------------------------
+local speedConn
+local warpDistance = 0.4
+local warpCooldown = 0.05
+local lastWarp = 0
+
+local function startSpeed()
+    speedConn = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not hrp or not hum then return end
+
+        if tick() - lastWarp >= warpCooldown then
+            if hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * warpDistance
+                lastWarp = tick()
+            end
+        end
+    end)
+end
+
+local function stopSpeed()
+    if speedConn then
+        speedConn:Disconnect()
+        speedConn = nil
+    end
+end
+
+PlayerTab:Toggle({
+    Title = "Speed",
+    Desc = "",
+    Default = false,
+    Callback = function(state)
+        if state then
+            startSpeed()
+        else
+            stopSpeed()
+        end
     end
 })
