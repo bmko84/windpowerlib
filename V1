@@ -112,6 +112,7 @@ local EnableWallBang = false
 
 CombatTab:Toggle({
     Title = "Enable Silent Aim",
+    Flag = "SilentAimEnabled",
     Default = false,
     Callback = function(v)
         SilentAimEnabled = v
@@ -120,6 +121,7 @@ CombatTab:Toggle({
 
 CombatTab:Toggle({
     Title = "Enable Wall Bang",
+    Flag = "WallBangEnabled",
     Default = false,
     Callback = function(v)
         EnableWallBang = v
@@ -137,6 +139,7 @@ local showFov = false
 
 CombatTab:Toggle({
     Title = "Enable FOV Circle",
+    Flag = "ShowFOVCircle",
     Default = false,
     Callback = function(state)
         showFov = state
@@ -146,6 +149,7 @@ CombatTab:Toggle({
 
 CombatTab:Slider({
     Title = "FOV Radius",
+    Flag = "FOVRadius",
     Step = 1,
     Value = {Min = 50, Max = 500, Default = FOVCircle.Radius},
     Callback = function(value)
