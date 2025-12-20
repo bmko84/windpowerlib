@@ -694,3 +694,204 @@ task.spawn(function()
         Notify("Config", "Load Failed", "alert")
     end
 end)
+------------------------------------------------
+-- ===== WEAPON ESP (โค้ดเดิมของมึง) =====
+------------------------------------------------
+local ItemESP_Enabled = false
+local BillboardCache = {}
+local ItemESP_UpdateConnections = {}
+local WeaponDB = {}
+local PreloadedImages = {}
+
+------------------------------------------------
+-- UNIQUE KEY (เดิม)
+------------------------------------------------
+local function generateUniqueKey(tool)
+    if not tool or not tool:IsA("Tool") then return nil end
+
+    local itemId = tool:GetAttribute("ItemId") or tool:GetAttribute("Id")
+    if itemId and itemId ~= "" then
+        return "ITEMID_" .. tostring(itemId)
+    end
+
+    local partsData = {}
+    for _, part in ipairs(tool:GetDescendants()) do
+        if part:IsA("SpecialMesh") and part.MeshId and part.MeshId ~= "" then
+            table.insert(partsData, "MESH_"..part.MeshId.."|TEX_"..(part.TextureId or ""))
+        elseif part:IsA("MeshPart") and part.MeshId and part.MeshId ~= "" then
+            table.insert(partsData, "MESH_"..part.MeshId.."|TEX_"..(part.TextureID or ""))
+        elseif part:IsA("Decal") and part.Texture and part.Texture ~= "" then
+            table.insert(partsData, "DECAL_"..part.Texture)
+        end
+    end
+
+    if #partsData > 0 then
+        table.sort(partsData)
+        return "MESHKEY_" .. table.concat(partsData, ";")
+    end
+
+    return "NAME_" .. tool.Name
+end
+
+------------------------------------------------
+-- REGISTER WEAPON (เดิม)
+------------------------------------------------
+local function registerItems(folder)
+    for _, tool in ipairs(folder:GetDescendants()) do
+        if not tool:IsA("Tool") then continue end
+
+        local key = generateUniqueKey(tool)
+        if not key then continue end
+
+        local displayName = tool:GetAttribute("DisplayName") or tool.Name
+        local imageId = tool:GetAttribute("ImageId") or "rbxassetid://7072725737"
+
+        WeaponDB[key] = {
+            Name = displayName,
+            ImageId = imageId,
+            ToolName = tool.Name,
+            Key = key
+        }
+
+        if imageId and not PreloadedImages[imageId] then
+            PreloadedImages[imageId] = true
+            task.spawn(function()
+                pcall(function()
+                    ContentProvider:PreloadAsync({imageId})
+                end)
+            end)
+        end
+    end
+end
+
+pcall(function()
+    registerItems(ReplicatedStorage)
+    registerItems(game:GetService("StarterPack"))
+end)
+
+local function getWeaponInfo(tool)
+    local key = generateUniqueKey(tool)
+    return WeaponDB[key]
+end
+
+------------------------------------------------
+-- CREATE BILLBOARD (เดิม)
+------------------------------------------------
+local function createBillboardForPlayer(player)
+    if player == LocalPlayer or BillboardCache[player] then return end
+    local connections = {}
+
+    local function setup()
+        local char = player.Character
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ItemESP"
+        billboard.Adornee = hrp
+        billboard.Size = UDim2.new(0, 280, 0, 40)
+        billboard.StudsOffset = Vector3.new(0, -6.5, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Enabled = ItemESP_Enabled
+        billboard.Parent = hrp
+
+        local container = Instance.new("Frame", billboard)
+        container.Size = UDim2.new(1,0,1,0)
+        container.BackgroundTransparency = 1
+
+        local function update()
+            container:ClearAllChildren()
+            if not ItemESP_Enabled then
+                billboard.Enabled = false
+                return
+            end
+            billboard.Enabled = true
+
+            local tools = {}
+            local function scan(folder)
+                for _, t in ipairs(folder:GetChildren()) do
+                    if t:IsA("Tool") then
+                        local info = getWeaponInfo(t)
+                        if info then
+                            table.insert(tools, info)
+                        end
+                    end
+                end
+            end
+
+            scan(char)
+            if player:FindFirstChild("Backpack") then
+                scan(player.Backpack)
+            end
+
+            local layout = Instance.new("UIGridLayout", container)
+            layout.CellSize = UDim2.new(0, 35, 0, 35)
+            layout.CellPadding = UDim2.new(0, 6, 0, 0)
+            layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+            for i, info in ipairs(tools) do
+                local img = Instance.new("ImageLabel")
+                img.Size = UDim2.new(0,35,0,35)
+                img.BackgroundTransparency = 1
+                img.Image = info.ImageId
+                img.Parent = container
+                img.LayoutOrder = i
+            end
+        end
+
+        update()
+
+        table.insert(connections, char.ChildAdded:Connect(update))
+        table.insert(connections, char.ChildRemoved:Connect(update))
+        table.insert(connections, player.Backpack.ChildAdded:Connect(update))
+        table.insert(connections, player.Backpack.ChildRemoved:Connect(update))
+
+        BillboardCache[player] = billboard
+        ItemESP_UpdateConnections[player] = connections
+    end
+
+    if player.Character then setup() end
+    player.CharacterAdded:Connect(function()
+        task.wait(1)
+        setup()
+    end)
+end
+
+------------------------------------------------
+-- PLAYER LOOP
+------------------------------------------------
+for _, p in ipairs(Players:GetPlayers()) do
+    createBillboardForPlayer(p)
+end
+
+Players.PlayerAdded:Connect(createBillboardForPlayer)
+
+Players.PlayerRemoving:Connect(function(p)
+    if BillboardCache[p] then
+        BillboardCache[p]:Destroy()
+        BillboardCache[p] = nil
+    end
+    if ItemESP_UpdateConnections[p] then
+        for _, c in ipairs(ItemESP_UpdateConnections[p]) do
+            if c.Connected then c:Disconnect() end
+        end
+        ItemESP_UpdateConnections[p] = nil
+    end
+end)
+
+------------------------------------------------
+-- UI TOGGLE (เดิม)
+------------------------------------------------
+EspTab:Toggle({
+    Title = "Show Weapon",
+    Default = false,
+    Callback = function(state)
+        ItemESP_Enabled = state
+        for _, bb in pairs(BillboardCache) do
+            if bb then
+                bb.Enabled = state
+            end
+        end
+    end
+})
