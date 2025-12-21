@@ -55,6 +55,7 @@ local CombatTab = Window:Tab({Title = "Combat", Icon = "sword"})
 local EspTab = Window:Tab({Title = "ESP", Icon = "eye"})
 local PlayerTab = Window:Tab({Title = "Player", Icon = "user"})
 local MiscTab = Window:Tab({Title = "Misc", Icon = "cog"})
+local ServerTab = Window:Tab({Title = "Server",Icon = "server"})
 local ConfigTab = Window:Tab({Title = "Config", Icon = "save"})
 
 
@@ -899,7 +900,7 @@ EspTab:Toggle({
 --------------------------------------------------------------
 -- HUD FPS / Ping / Players
 ----------------------------------------------------------------
-local hudText = MiscTab:Paragraph({
+local hudText = ServerTab:Paragraph({
     Title = "",
     Desc = "",
 })
@@ -941,7 +942,7 @@ end)
 ----------------------------------------------------------------
 -- Teleport to JobId
 ----------------------------------------------------------------
-MiscTab:Input({
+ServerTab:Input({
     Title = "Teleport to JobId",
     Placeholder = "Enter JobId...",
     Callback = function(jobid)
@@ -959,7 +960,7 @@ MiscTab:Input({
 ----------------------------------------------------------------
 -- Copy JobId
 ----------------------------------------------------------------
-MiscTab:Button({
+ServerTab:Button({
     Title = "Copy Current JobId",
     Callback = function()
         if game.JobId then
@@ -1029,7 +1030,7 @@ local function HopServer()
     })
 end
 
-MiscTab:Button({
+ServerTab:Button({
     Title = "Hop Server",
     Callback = HopServer
 })
@@ -1037,7 +1038,7 @@ MiscTab:Button({
 ----------------------------------------------------------------
 -- Rejoin Server
 ----------------------------------------------------------------
-MiscTab:Button({
+ServerTab:Button({
     Title = "Rejoin Server",
     Callback = function()
         TeleportService:Teleport(placeId, player)
@@ -1395,5 +1396,21 @@ PlayerTab:Slider({
     Step = 1,
     Callback = function(value)
         burrowDepth = tonumber(value)
+    end
+})
+-- ===============================
+-- Misc Functions
+-- ===============================
+
+-- ปุ่มล่องหน
+MiscTab:Button({
+    Title = "invisible",
+    Desc = "กดแล้วรีตัวไม่งั้นไม่ล่องหน",
+    Callback = function()
+        task.spawn(function()
+            setfflag("NextGenReplicatorEnabledWrite4", "false")
+            task.wait(5)
+            setfflag("NextGenReplicatorEnabledWrite4", "true")
+        end)
     end
 })
