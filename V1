@@ -62,6 +62,8 @@ local ConfigTab = Window:Tab({Title = "Config", Icon = "save"})
 ------------------------------------------------
 -- BALANCE (ADD ONLY)
 ------------------------------------------------
+CombatTab:Section("Infomation")
+CombatTab:Divider()
 local BankBalance = CombatTab:Button({Title = "🏦 Bank Balance", Desc = "N/A"})
 local HandBalance = CombatTab:Button({Title = "💸 Hand Balance", Desc = "N/A"})
 
@@ -111,6 +113,8 @@ local Camera = Workspace.CurrentCamera
 local SilentAimEnabled = false
 local EnableWallBang = false
 
+CombatTab:Section("Infomation")
+CombatTab:Divider()
 CombatTab:Toggle({
     Title = "Enable Silent Aim",
     Flag = "SilentAimEnabled",
