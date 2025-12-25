@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/bmko84/windpowerlib/refs/heads/dev/V90", true))()
