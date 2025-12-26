@@ -1233,8 +1233,7 @@ end)
 ------------------------------------------------
 -- PLAYER TAB : INVISIBLE + RESPAWN
 ------------------------------------------------
-Tub:Section("Mousiaus9")
-PlayerTab:Button({
+MiscTab:Button({
     Title = "ล่องหน",
     Desc = "ล่องหน 1 วิ แล้วรีตัว",
     Callback = function()
@@ -1250,7 +1249,7 @@ PlayerTab:Button({
 ------------------------------------------------
 -- BUY TAB : SKIP SPIN
 ------------------------------------------------
-PlayerTab:Button({
+MiscTab:Button({
     Title = "Skip Spin",
     Callback = function()
         if _G.autoCratesEnabled then
