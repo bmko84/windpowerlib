@@ -63,6 +63,7 @@ Window:Tag({
 local CombatTab = Window:Tab({ Title = "Combat", Icon = "sword" })
 local EspTab    = Window:Tab({ Title = "ESP",    Icon = "eye" })
 local PlayerTab = Window:Tab({ Title = "Player", Icon = "user" })
+local VehicleTab = Window:Tab({Title = "Vehicle",Icon = "car" })
 local MiscTab   = Window:Tab({ Title = "Misc",   Icon = "cog" })
 local ServerTab = Window:Tab({Title = "Server",Icon = "server"})
 local ConfigTab = Window:Tab({Title = "Config", Icon = "save"})
