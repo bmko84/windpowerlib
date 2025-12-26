@@ -1203,7 +1203,7 @@ RunService.Heartbeat:Connect(function(dt)
     _G.accumulatedTime = accumulatedTime
 end)
 
-MiscTab:Toggle({
+VehicleTab:Toggle({
     Title = "Bump Aura",
     Flag = "BumpAura",
     Desc = "This feature might cause lag.",
