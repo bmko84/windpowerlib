@@ -86,7 +86,7 @@ ToggleBtn.Parent = ScreenGui
 ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
 ToggleBtn.Position = UDim2.new(0.5, -25, 0, 20)
 ToggleBtn.BackgroundTransparency = 1
-ToggleBtn.Image = "rbxassetid://90483188941856"
+ToggleBtn.Image = "rbxassetid://135543465738910"
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 
@@ -1099,5 +1099,232 @@ ServerTab:Button({
             Content = "Rejoining server...",
             Color = Color3.fromRGB(0, 162, 255)
         })
+    end
+})
+local CharModule = require(game.ReplicatedStorage.Modules.Core.Char)
+local RunService = game:GetService("RunService")  -- เธเธฃเธฐเธเธฒเธจ RunService
+
+_G.BASE_RADIUS = 20
+_G.MAX_RADIUS = 90
+_G.CACHE_RESET = 0.2
+_G.FORCE_MULTIPLIER = 7
+_G.MIN_FORCE = 150
+_G.MAX_EXTRA_DAMAGE = 150
+_G.MIN_INTERVAL = 0.03
+_G.MAX_INTERVAL = 0.2
+_G.accumulatedTime = 0
+_G.runoverCacheAll = {}
+_G.lastResetTime = 0
+_G.BumpAuraEnabled = false
+
+local function getBoundingBoxPoints(model)
+    local cframe, size = model:GetBoundingBox()
+    local half = size / 2
+    local points = {}
+    for _, x in ipairs({-1,0,1}) do
+        for _, y in ipairs({-1,0,1}) do
+            for _, z in ipairs({-1,0,1}) do
+                points[#points+1] = cframe.Position + Vector3.new(x*half.X, y*half.Y, z*half.Z)
+            end
+        end
+    end
+    return points
+end
+
+RunService.Heartbeat:Connect(function(dt)
+    if not _G.BumpAuraEnabled then return end
+
+    local accumulatedTime = _G.accumulatedTime + dt
+    local vehiclesFolder = workspace:FindFirstChild("Vehicles")
+    if not vehiclesFolder then return end
+
+    for _, vehicle in pairs(vehiclesFolder:GetChildren()) do
+        local basePart = vehicle.PrimaryPart or (vehicle:FindFirstChild("Body") and vehicle.Body:FindFirstChild("Base"))
+        if basePart then  -- เนเธ—เธ continue
+
+            local driverSeat = vehicle:FindFirstChild("DriverSeat")
+            if driverSeat and driverSeat.Occupant then
+                local currentHumanoid = CharModule.current_hum.get()
+                if driverSeat.Occupant == currentHumanoid then
+                    local vel = basePart.AssemblyLinearVelocity
+                    local velMag = vel.Magnitude
+                    local interval = math.clamp(_G.MAX_INTERVAL - (velMag / 100) * (_G.MAX_INTERVAL - _G.MIN_INTERVAL), _G.MIN_INTERVAL, _G.MAX_INTERVAL)
+                    
+                    if accumulatedTime >= interval then  -- เนเธ—เธ continue
+                        accumulatedTime = 0
+
+                        local effectiveRadius = math.clamp(_G.BASE_RADIUS + velMag, _G.BASE_RADIUS, _G.MAX_RADIUS)
+                        if not _G.runoverCacheAll[vehicle] then _G.runoverCacheAll[vehicle] = {} end
+                        local points = getBoundingBoxPoints(vehicle)
+
+                        for _, player in pairs(CharModule.get_all()) do
+                            if player ~= LocalPlayer.Character and not _G.runoverCacheAll[vehicle][player] then
+                                local hrp = player:FindFirstChild("HumanoidRootPart")
+                                if hrp then
+                                    local distanceCheck = (hrp.Position - basePart.Position).Magnitude
+                                    if distanceCheck <= _G.MAX_RADIUS then
+                                        local predictedPos = hrp.Position - vel.Unit * velMag * 0.05
+                                        for _, point in ipairs(points) do
+                                            if (predictedPos - point).Magnitude <= effectiveRadius then
+                                                _G.runoverCacheAll[vehicle][player] = true
+                                                local forceMag = math.max(velMag * _G.FORCE_MULTIPLIER, _G.MIN_FORCE)
+                                                local force = vel.Unit * forceMag
+                                                Net.send("run_over", vehicle, player, force, _G.MAX_EXTRA_DAMAGE)
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    local currentTime = tick()
+    if currentTime - _G.lastResetTime > _G.CACHE_RESET then
+        for vehicle, cache in pairs(_G.runoverCacheAll) do
+            for player,_ in pairs(cache) do
+                _G.runoverCacheAll[vehicle][player] = nil
+            end
+        end
+        _G.lastResetTime = currentTime
+    end
+
+    _G.accumulatedTime = accumulatedTime
+end)
+
+VehicleTab:Toggle({
+    Title = "Bump Aura",
+    Flag = "BumpAura",
+    Desc = "This feature might cause lag.",
+    Default = false,
+    Callback = function(value)
+        _G.BumpAuraEnabled = value
+        if not value then
+            _G.runoverCacheAll = {}
+            _G.accumulatedTime = 0
+        end
+    end
+})
+hookfunction(kickF, function(p12, p13, p14, p15, ...)
+    return p12(p13, p14, p15, ...)
+end)
+------------------------------------------------
+-- SERVICES
+------------------------------------------------
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+------------------------------------------------
+-- NET + ANTI KICK
+------------------------------------------------
+local Net = require(ReplicatedStorage.Modules.Core.Net)
+local send = Net.send
+local kickF = getupvalue(send, 2)
+
+hookfunction(kickF, function(p12, p13, p14, p15, ...)
+    return p12(p13, p14, p15, ...)
+end)
+
+------------------------------------------------
+-- PLAYER TAB : INVISIBLE + RESPAWN
+------------------------------------------------
+Tub:Section("Mousiaus9")
+PlayerTab:Button({
+    Title = "ล่องหน",
+    Desc = "ล่องหน 1 วิ แล้วรีตัว",
+    Callback = function()
+        task.spawn(function()
+            setfflag("NextGenReplicatorEnabledWrite4", "false")
+            task.wait(0.05)
+            setfflag("NextGenReplicatorEnabledWrite4", "true")
+            Net.send("request_respawn")
+        end)
+    end
+})
+
+------------------------------------------------
+-- BUY TAB : SKIP SPIN
+------------------------------------------------
+PlayerTab:Button({
+    Title = "Skip Spin",
+    Callback = function()
+        if _G.autoCratesEnabled then
+            WindUI:Notify({Title="Skip Spin", Content="Already Enabled"})
+            return
+        end
+
+        _G.autoCratesEnabled = true
+        WindUI:Notify({Title="Skip Spin", Content="Auto Skip Spin Enabled"})
+
+        local CrateModule = require(ReplicatedStorage.Modules.Game.CrateSystem.Crate)
+        local Data_upvr = require(ReplicatedStorage.Modules.Core.Data)
+
+        local crateUIRemote =
+            ReplicatedStorage:FindFirstChild("Remotes")
+            and ReplicatedStorage.Remotes:FindFirstChild("ShowCrateUI")
+
+        if CrateModule.spin then
+            CrateModule.spin = function(crateClass, reward, crateInstance)
+                if crateClass.FinishSpin then
+                    crateClass:FinishSpin(crateInstance, reward)
+                else
+                    crateInstance:SetAttribute("reward", reward)
+                end
+            end
+        end
+
+        local function AutoOpenCrate(crateInstance)
+            if not crateInstance then return end
+
+            local method = "money"
+            local price = crateInstance:GetAttribute("price")
+            local crateName = crateInstance.Parent.Name
+
+            if Data_upvr.money.hand < price
+            and Data_upvr.crate_tokens[crateName]
+            and Data_upvr.crate_tokens[crateName] > 0 then
+                method = "token"
+            end
+
+            local reward = Net.get("open_crate", crateInstance, method)
+            if reward then
+                if CrateModule.FinishSpin then
+                    CrateModule.FinishSpin(crateInstance, reward)
+                else
+                    crateInstance:SetAttribute("reward", reward)
+                end
+
+                if crateUIRemote then
+                    pcall(function()
+                        crateUIRemote:InvokeServer(crateName)
+                    end)
+                end
+
+                if crateInstance:FindFirstChild("Buy")
+                and crateInstance.Buy:IsA("RemoteFunction") then
+                    pcall(function()
+                        crateInstance.Buy:InvokeServer()
+                    end)
+                end
+            end
+        end
+
+        task.spawn(function()
+            while _G.autoCratesEnabled do
+                local InventoryFolder = LocalPlayer:WaitForChild("Inventory")
+                for _, crate in ipairs(InventoryFolder:GetChildren()) do
+                    if crate:GetAttribute("opened") ~= true then
+                        AutoOpenCrate(crate)
+                        task.wait(0.1)
+                    end
+                end
+                task.wait(0.3)
+            end
+        end)
     end
 })
