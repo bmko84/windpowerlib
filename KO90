@@ -1230,40 +1230,37 @@ VehicleTab:Toggle({
 hookfunction(kickF, function(p12, p13, p14, p15, ...)
     return p12(p13, p14, p15, ...)
 end)
-------------------------------------------------
--- SERVICES
-------------------------------------------------
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalPlayer = Players.LocalPlayer
+-- =========================
+-- ฟังก์ชัน Invisible (ของจริง BlockSpin)
+-- =========================
+local function Invisible()
+    -- 1) Toggle fflag
+    setfflag("NextGenReplicatorEnabledWrite4", "false")
+    task.wait(0.1)
+    setfflag("NextGenReplicatorEnabledWrite4", "true")
 
-------------------------------------------------
--- NET + ANTI KICK
-------------------------------------------------
-local Net = require(ReplicatedStorage.Modules.Core.Net)
-local send = Net.send
-local kickF = getupvalue(send, 2)
+    -- 2) Bypass + request_respawn
+    local Net = require(ReplicatedStorage.Modules.Core.Net)
+    local send = Net.send
+    local kickF = getupvalue(send, 2)
 
-hookfunction(kickF, function(p12, p13, p14, p15, ...)
-    return p12(p13, p14, p15, ...)
-end)
+    hookfunction(kickF, function(p12, p13, p14, p15, ...)
+        return p12(p13, p14, p15, ...)
+    end)
 
-------------------------------------------------
--- PLAYER TAB : INVISIBLE + RESPAWN
-------------------------------------------------
+    Net.send("request_respawn")
+end
+
+-- =========================
+-- ปุ่ม Invisible (แท็บ Misc)
+-- =========================
 MiscTab:Button({
-    Title = "ล่องหน",
-    Desc = "ล่องหน 1 วิ แล้วรีตัว",
+    Title = "Invisible",
+    Desc = "Toggle fflag + respawn (BlockSpin)",
     Callback = function()
-        task.spawn(function()
-            setfflag("NextGenReplicatorEnabledWrite4", "false")
-            task.wait(0.05)
-            setfflag("NextGenReplicatorEnabledWrite4", "true")
-            Net.send("request_respawn")
-        end)
+        Invisible()
     end
 })
-
 ------------------------------------------------
 -- BUY TAB : SKIP SPIN
 ------------------------------------------------
