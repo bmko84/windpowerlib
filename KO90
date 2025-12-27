@@ -17,6 +17,10 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 local Net = require(game.ReplicatedStorage.Modules.Core.Net)
 
+local ReplicatedStorage = 
+game:GetService("ReplicatedStorage") 
+
+
 ------------------------------------------------
 -- Load WindUI
 ------------------------------------------------
