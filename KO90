@@ -1291,7 +1291,9 @@ PlayerTab:Toggle({
         getgenv().Infinitestamina = v
     end
 })
-
+hookfunction(kickF, function(p12, p13, p14, p15, ...)
+    return p12(p13, p14, p15, ...)
+end)
 local CharModule = require(game.ReplicatedStorage.Modules.Core.Char)
 local RunService = game:GetService("RunService")  -- เธเธฃเธฐเธเธฒเธจ RunService
 
