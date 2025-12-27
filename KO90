@@ -1155,6 +1155,9 @@ MiscTab:Button({
     end
 })
 
+hookfunction(kickF, function(p12, p13, p14, p15, ...)
+    return p12(p13, p14, p15, ...)
+end)
 local CharModule = require(game.ReplicatedStorage.Modules.Core.Char)
 local RunService = game:GetService("RunService")  -- เธเธฃเธฐเธเธฒเธจ RunService
 
@@ -1270,3 +1273,48 @@ VehicleTab:Toggle({
 hookfunction(kickF, function(p12, p13, p14, p15, ...)
     return p12(p13, p14, p15, ...)
 end)
+-----------------------------------------------
+-- PLAYER TAB : ซิ่งเร็ว (วาร์ป)
+------------------------------------------------
+local speedConn
+local warpDistance = 0.4
+local warpCooldown = 0.05
+local lastWarp = 0
+
+local function startSpeed()
+    speedConn = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not hrp or not hum then return end
+
+        if tick() - lastWarp >= warpCooldown then
+            if hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * warpDistance
+                lastWarp = tick()
+            end
+        end
+    end)
+end
+
+local function stopSpeed()
+    if speedConn then
+        speedConn:Disconnect()
+        speedConn = nil
+    end
+end
+
+PlayerTab:Toggle({
+    Title = "Speed",
+    Desc = "",
+    Default = false,
+    Callback = function(state)
+        if state then
+            startSpeed()
+        else
+            stopSpeed()
+        end
+    end
+})
