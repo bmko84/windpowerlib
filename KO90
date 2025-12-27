@@ -1196,6 +1196,10 @@ RunService.Heartbeat:Connect(function(dt)
     _G.accumulatedTime = accumulatedTime
 end)
 
+VehicleTab:Section({
+    Title = "เกี่ยวกับรถ",
+    Desc = ""
+})
 VehicleTab:Toggle({
     Title = "Bump Aura",
     Flag = "BumpAura",
