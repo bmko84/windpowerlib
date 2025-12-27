@@ -172,6 +172,10 @@ local Camera = Workspace.CurrentCamera
 local SilentAimEnabled = false
 local EnableWallBang = false
 
+CombatTab:Section({
+    Title = "Silent Aim",
+    Desc = ""
+})
 CombatTab:Toggle({
     Title = "Enable Silent Aim",
     Flag = "SilentAimEnabled",
