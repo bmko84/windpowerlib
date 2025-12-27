@@ -20,6 +20,7 @@ local Net = require(game.ReplicatedStorage.Modules.Core.Net)
 local ReplicatedStorage = 
 game:GetService("ReplicatedStorage") 
 
+local kickF = LocalPlayer.Kick
 
 ------------------------------------------------
 -- Load WindUI
