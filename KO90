@@ -1119,6 +1119,42 @@ ServerTab:Button({
         })
     end
 })
+MiscTab:Section({
+    Title = "ล่องหน",
+    Desc = ""
+})
+-- =========================
+-- ฟังก์ชัน Invisible (ของจริง BlockSpin)
+-- =========================
+local function Invisible()
+    -- 1) Toggle fflag
+    setfflag("NextGenReplicatorEnabledWrite4", "false")
+    task.wait(0.1)
+    setfflag("NextGenReplicatorEnabledWrite4", "true")
+
+    -- 2) Bypass + request_respawn
+    local Net = require(ReplicatedStorage.Modules.Core.Net)
+    local send = Net.send
+    local kickF = getupvalue(send, 2)
+
+    hookfunction(kickF, function(p12, p13, p14, p15, ...)
+        return p12(p13, p14, p15, ...)
+    end)
+
+    Net.send("request_respawn")
+end
+
+-- =========================
+-- ปุ่ม Invisible (แท็บ Misc)
+-- =========================
+MiscTab:Button({
+    Title = "Invisible",
+    Desc = "",
+    Callback = function()
+        Invisible()
+    end
+})
+
 local CharModule = require(game.ReplicatedStorage.Modules.Core.Char)
 local RunService = game:GetService("RunService")  -- เธเธฃเธฐเธเธฒเธจ RunService
 
@@ -1234,38 +1270,3 @@ VehicleTab:Toggle({
 hookfunction(kickF, function(p12, p13, p14, p15, ...)
     return p12(p13, p14, p15, ...)
 end)
-MiscTab:Section({
-    Title = "ล่องหน",
-    Desc = ""
-})
--- =========================
--- ฟังก์ชัน Invisible (ของจริง BlockSpin)
--- =========================
-local function Invisible()
-    -- 1) Toggle fflag
-    setfflag("NextGenReplicatorEnabledWrite4", "false")
-    task.wait(0.1)
-    setfflag("NextGenReplicatorEnabledWrite4", "true")
-
-    -- 2) Bypass + request_respawn
-    local Net = require(ReplicatedStorage.Modules.Core.Net)
-    local send = Net.send
-    local kickF = getupvalue(send, 2)
-
-    hookfunction(kickF, function(p12, p13, p14, p15, ...)
-        return p12(p13, p14, p15, ...)
-    end)
-
-    Net.send("request_respawn")
-end
-
--- =========================
--- ปุ่ม Invisible (แท็บ Misc)
--- =========================
-MiscTab:Button({
-    Title = "Invisible",
-    Desc = "",
-    Callback = function()
-        Invisible()
-    end
-})
