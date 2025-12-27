@@ -117,6 +117,10 @@ UserInputService.InputBegan:Connect(function(input, gp)
 end)
 -- BALANCE (ADD ONLY)
 ------------------------------------------------
+CombatTab:Section({
+    Title = "information",
+    Desc = ""
+})
 local BankBalance = CombatTab:Button({Title = "🏦 Bank Balance", Desc = "N/A"})
 local HandBalance = CombatTab:Button({Title = "💸 Hand Balance", Desc = "N/A"})
 
