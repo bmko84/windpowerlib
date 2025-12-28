@@ -1568,3 +1568,88 @@ PlayerTab:Slider({
         burrowDepth = tonumber(value)
     end
 })
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local Automatic = false
+local FireRate = 1500
+local toolCache = {}
+
+local function matchesTarget(name, target)
+    name = name:lower()
+    target = target:lower()
+    return name:find(target) ~= nil or name:match("%d*_" .. target .. "_?%d*") ~= nil
+end
+
+local function applyAttributesSmart(gun)
+    local prev = toolCache[gun]
+    if prev and prev.FireRate == FireRate then return end
+
+    local attrValue = gun:GetAttribute("fire_rate")
+    if attrValue ~= nil then
+        gun:SetAttribute("fire_rate", FireRate)
+    end
+
+    for _, child in ipairs(gun:GetDescendants()) do
+        if (child:IsA("NumberValue") or child:IsA("IntValue")) and matchesTarget(child.Name, "fire_rate") then
+            child.Value = FireRate
+        end
+    end
+
+    toolCache[gun] = { FireRate = FireRate }
+end
+
+local function updateAllGuns()
+    if player.Character then
+        for _, tool in ipairs(player.Character:GetChildren()) do
+            if tool:IsA("Tool") then
+                applyAttributesSmart(tool)
+            end
+        end
+    end
+
+    for _, tool in ipairs(player.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            applyAttributesSmart(tool)
+        end
+    end
+end
+
+player.CharacterAdded:Connect(function(char)
+    if Automatic then
+        updateAllGuns()
+    end
+
+    char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") and Automatic then
+            applyAttributesSmart(child)
+        end
+    end)
+end)
+
+player.Backpack.ChildAdded:Connect(function(child)
+    if child:IsA("Tool") and Automatic then
+        applyAttributesSmart(child)
+    end
+end)
+
+GunmodeTab:Toggle({
+    Title = "Automatic",
+    Default = false,
+    Callback = function(state)
+        Automatic = state
+        if Automatic then
+            updateAllGuns()
+        end
+    end
+})
+
+GunmodeTab:Slider({
+    Title = "Fire Rate",
+    Value = { Min = 100, Max = 2000, Default = FireRate },
+    Step = 1,
+    Callback = function(value)
+        FireRate = tonumber(value)
+        updateAllGuns()
+    end
+})
