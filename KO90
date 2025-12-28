@@ -22,9 +22,6 @@ game:GetService("ReplicatedStorage")
 
 local kickF = LocalPlayer.Kick
 
-local Players, LocalPlayer, ReplicatedStorage =
-game:GetService("Players"), game.Players.LocalPlayer, 
-game:GetService("ReplicatedStorage")
 
 ------------------------------------------------
 -- Load WindUI
