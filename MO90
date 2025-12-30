@@ -129,6 +129,45 @@ UserInputService.InputBegan:Connect(function(input, gp)
         toggleUI()
     end
 end)
+CombatTab:Section({
+    Title = "information",
+    Desc = ""
+local BankBalance = CombatTab:Button({Title = "🏦 Bank Balance", Desc = "N/A"})
+local HandBalance = CombatTab:Button({Title = "💸 Hand Balance", Desc = "N/A"})
+
+local function HandMoney()
+    local success, value = pcall(function()
+        local topRight = PlayerGui:FindFirstChild("TopRightHud")
+        if topRight then
+            local holder = topRight:FindFirstChild("Holder")
+            if holder and holder:FindFirstChild("Frame") and holder.Frame:FindFirstChild("MoneyTextLabel") then
+                return tonumber(holder.Frame.MoneyTextLabel.Text:match("%$(%d+)"))
+            end
+        end
+        return 0
+    end)
+    return success and value or 0
+end
+
+local function ATMMoney()
+    for _, v in ipairs(PlayerGui:GetDescendants()) do
+        if v:IsA("TextLabel") and string.find(v.Text, "Bank Balance") then
+            local success, value = pcall(function()
+                return tonumber(v.Text:match("%$(%d+)"))
+            end)
+            if success then return value end
+        end
+    end
+    return 0
+end
+
+task.spawn(function()
+    while task.wait(0.2) do
+        BankBalance:SetDesc('<b><font color="#00FF00">$' .. (ATMMoney() or 0) .. "</font></b>")
+        HandBalance:SetDesc('<b><font color="#00f2ff">$' .. (HandMoney() or 0) .. "</font></b>")
+    end
+end)
+--------------------------------------
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
