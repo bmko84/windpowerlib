@@ -129,6 +129,10 @@ UserInputService.InputBegan:Connect(function(input, gp)
         toggleUI()
     end
 end)
+CombatTab:Section({
+    Title = "information",
+    Desc = ""
+})
 local BankBalance = CombatTab:Button({Title = "🏦 Bank Balance", Desc = "N/A"})
 local HandBalance = CombatTab:Button({Title = "💸 Hand Balance", Desc = "N/A"})
 
@@ -176,6 +180,10 @@ local Camera = Workspace.CurrentCamera
 local SilentAimEnabled = false
 local EnableWallBang = false
 
+CombatTab:Section({
+    Title = "Silent Aim",
+    Desc = ""
+})
 CombatTab:Toggle({
     Title = "Enable Silent Aim",
     Default = false,
