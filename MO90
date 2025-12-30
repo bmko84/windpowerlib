@@ -167,7 +167,6 @@ task.spawn(function()
         HandBalance:SetDesc('<b><font color="#00f2ff">$' .. (HandMoney() or 0) .. "</font></b>")
     end
 end)
---------------------------------------
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -179,6 +178,10 @@ local Camera = Workspace.CurrentCamera
 
 local SilentAimEnabled = false
 local EnableWallBang = false
+CombatTab:Section({
+    Title = "Silent Aim",
+    Desc = ""
+})
 
 CombatTab:Toggle({
     Title = "Enable Silent Aim",
