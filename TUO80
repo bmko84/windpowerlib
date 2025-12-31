@@ -1559,7 +1559,7 @@ GunmodeTab:Slider({
     end
 })
 ------------------------------------------------
--- Infinite Stamina (Module-based)
+-- Infinite Stamina (ADD-ON ใต้โค้ดเดิม)
 ------------------------------------------------
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Net = require(ReplicatedStorage.Modules.Core.Net)
@@ -1567,7 +1567,7 @@ local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
 
 getgenv().InfiniteStamina = false
 
--- Bypass Net
+-- Bypass Net (รันครั้งเดียว)
 if not getgenv().Bypassed then
     local func = debug.getupvalue(Net.get, 2)
     debug.setconstant(func, 3, "__Bypass")
@@ -1575,16 +1575,14 @@ if not getgenv().Bypassed then
     getgenv().Bypassed = true
 end
 
-repeat task.wait() until getgenv().Bypassed
-
--- Force sprint
+-- บังคับ sprint แบบไม่วาป
 RunService.Heartbeat:Connect(function()
     if getgenv().InfiniteStamina then
         Net.send("set_sprinting_1", true)
     end
 end)
 
--- Hook stamina bar
+-- Hook stamina bar (กันสเตมิน่าลด)
 local consume_stamina = SprintModule.consume_stamina
 local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
 local oldUpdate = SprintBar.update
@@ -1597,12 +1595,13 @@ SprintBar.update = function(...)
     end
     return oldUpdate(...)
 end
+
 ------------------------------------------------
--- Player Tab Features
+-- PlayerTab : วางต่อใต้ของเดิม
 ------------------------------------------------
 PlayerTab:Toggle({
     Title = "Infinite Stamina",
-    Desc = "Run forever without stamina drain",
+    Desc = "Run forever (no stamina drain)",
     Icon = "zap",
     Type = "Checkbox",
     Value = false,
