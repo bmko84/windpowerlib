@@ -1473,6 +1473,58 @@ PlayerTab:Toggle({
         magnetEnabled = v
     end
 })
+----------------------------------------------
+-- Infinite Stamina (ADD-ON ใต้โค้ดเดิม)
+------------------------------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Net = require(ReplicatedStorage.Modules.Core.Net)
+local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+
+getgenv().InfiniteStamina = false
+
+-- Bypass Net (รันครั้งเดียว)
+if not getgenv().Bypassed then
+    local func = debug.getupvalue(Net.get, 2)
+    debug.setconstant(func, 3, "__Bypass")
+    debug.setconstant(func, 4, "__Bypass")
+    getgenv().Bypassed = true
+end
+
+-- บังคับ sprint แบบไม่วาป
+RunService.Heartbeat:Connect(function()
+    if getgenv().InfiniteStamina then
+        Net.send("set_sprinting_1", true)
+    end
+end)
+
+-- Hook stamina bar (กันสเตมิน่าลด)
+local consume_stamina = SprintModule.consume_stamina
+local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
+local oldUpdate = SprintBar.update
+
+SprintBar.update = function(...)
+    if getgenv().InfiniteStamina then
+        return oldUpdate(function()
+            return 0.5
+        end)
+    end
+    return oldUpdate(...)
+end
+
+------------------------------------------------
+-- PlayerTab : วางต่อใต้ของเดิม
+------------------------------------------------
+PlayerTab:Toggle({
+    Title = "Infinite Stamina",
+    Desc = "Run forever (no stamina drain)",
+    Icon = "zap",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        getgenv().InfiniteStamina = state
+    end
+})
+
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
@@ -1556,56 +1608,5 @@ GunmodeTab:Slider({
     Callback = function(value)
         FireRate = tonumber(value)
         updateAllGuns()
-    end
-})
-------------------------------------------------
--- Infinite Stamina (ADD-ON ใต้โค้ดเดิม)
-------------------------------------------------
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Net = require(ReplicatedStorage.Modules.Core.Net)
-local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
-
-getgenv().InfiniteStamina = false
-
--- Bypass Net (รันครั้งเดียว)
-if not getgenv().Bypassed then
-    local func = debug.getupvalue(Net.get, 2)
-    debug.setconstant(func, 3, "__Bypass")
-    debug.setconstant(func, 4, "__Bypass")
-    getgenv().Bypassed = true
-end
-
--- บังคับ sprint แบบไม่วาป
-RunService.Heartbeat:Connect(function()
-    if getgenv().InfiniteStamina then
-        Net.send("set_sprinting_1", true)
-    end
-end)
-
--- Hook stamina bar (กันสเตมิน่าลด)
-local consume_stamina = SprintModule.consume_stamina
-local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
-local oldUpdate = SprintBar.update
-
-SprintBar.update = function(...)
-    if getgenv().InfiniteStamina then
-        return oldUpdate(function()
-            return 0.5
-        end)
-    end
-    return oldUpdate(...)
-end
-
-------------------------------------------------
--- PlayerTab : วางต่อใต้ของเดิม
-------------------------------------------------
-PlayerTab:Toggle({
-    Title = "Infinite Stamina",
-    Desc = "Run forever (no stamina drain)",
-    Icon = "zap",
-    Type = "Checkbox",
-    Value = false,
-    Callback = function(state)
-        getgenv().InfiniteStamina = state
     end
 })
