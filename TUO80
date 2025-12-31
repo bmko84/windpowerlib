@@ -684,3 +684,178 @@ local kickF = getupvalue(send, 2)
 hookfunction(kickF, function(p12, p13, p14, p15, ...)
     return p12(p13, p14, p15, ...)
 end)
+-- ========== DROPPED ITEM ESP ==========
+------------------------------------------------
+local DroppedFolder = Workspace:WaitForChild("DroppedItems")
+local ItemESPs = {}
+local ItemESPEnabled = false
+
+local BlueColor  = Color3.fromRGB(0,150,255)
+local GreenColor = Color3.fromRGB(0,255,0)
+
+local function getItemColor(item)
+    return item.Name:lower():find("money") and GreenColor or BlueColor
+end
+
+local function createItemESP(item)
+    if not ItemESPEnabled or ItemESPs[item] then return end
+    local color = getItemColor(item)
+    local hls = {}
+
+    for _, p in ipairs(item:IsA("Model") and item:GetDescendants() or {item}) do
+        if p:IsA("BasePart") then
+            local hl = Instance.new("Highlight")
+            hl.Adornee = p
+            hl.FillColor = color
+            hl.OutlineColor = color
+            hl.FillTransparency = 0.7
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Parent = p
+            table.insert(hls, hl)
+        end
+    end
+
+    local base = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+    local label
+    if base then
+        local bb = Instance.new("BillboardGui", base)
+        bb.Size = UDim2.new(0,60,0,18)
+        bb.StudsOffset = Vector3.new(0, base.Size.Y+1, 0)
+        bb.AlwaysOnTop = true
+
+        label = Instance.new("TextLabel", bb)
+        label.Size = UDim2.fromScale(1,1)
+        label.BackgroundTransparency = 1
+        label.Text = "["..item.Name.."]"
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.TextColor3 = color
+    end
+
+    ItemESPs[item] = {hls=hls, label=label}
+end
+
+local function removeItemESP(item)
+    local d = ItemESPs[item]
+    if not d then return end
+    for _, hl in ipairs(d.hls) do hl:Destroy() end
+    if d.label then d.label.Parent:Destroy() end
+    ItemESPs[item] = nil
+end
+
+DroppedFolder.ChildAdded:Connect(function(i)
+    task.wait(.1)
+    createItemESP(i)
+end)
+DroppedFolder.ChildRemoved:Connect(removeItemESP)
+
+------------------------------------------------
+-- ========== PLAYER ESP ==========
+------------------------------------------------
+local PlayerESP = {}
+local ShowBoxESP, ShowNameESP, ShowHealthESP = false, false, false
+
+local function createESP(player)
+    if player == LocalPlayer or PlayerESP[player] then return end
+
+    local box = {
+        TL=Drawing.new("Line"), TR=Drawing.new("Line"),
+        BL=Drawing.new("Line"), BR=Drawing.new("Line"),
+    }
+    for _,l in pairs(box) do
+        l.Thickness = 2
+        l.Color = Color3.fromRGB(0,255,0)
+        l.Visible = false
+    end
+
+    local name = Drawing.new("Text")
+    name.Size = 16
+    name.Center = true
+    name.Outline = true
+    name.Color = Color3.new(1,1,1)
+    name.Visible = false
+
+    local hp = Drawing.new("Line")
+    hp.Thickness = 3
+    hp.Color = Color3.fromRGB(0,255,0)
+    hp.Visible = false
+
+    PlayerESP[player] = {Box=box, Name=name, HP=hp}
+end
+
+local function removeESP(player)
+    local d = PlayerESP[player]
+    if not d then return end
+    for _,l in pairs(d.Box) do l:Remove() end
+    d.Name:Remove()
+    d.HP:Remove()
+    PlayerESP[player] = nil
+end
+
+RunService.RenderStepped:Connect(function()
+    for p,d in pairs(PlayerESP) do
+        local c = p.Character
+        local hrp = c and c:FindFirstChild("HumanoidRootPart")
+        local hum = c and c:FindFirstChild("Humanoid")
+        if not hrp or not hum or hum.Health<=0 then removeESP(p) continue end
+
+        local pos,vis = Camera:WorldToViewportPoint(hrp.Position)
+        if not vis then
+            for _,l in pairs(d.Box) do l.Visible=false end
+            d.Name.Visible=false d.HP.Visible=false
+            continue
+        end
+
+        local top = Camera:WorldToViewportPoint(hrp.Position+Vector3.new(0,3,0))
+        local bot = Camera:WorldToViewportPoint(hrp.Position-Vector3.new(0,3,0))
+        local h = math.abs(top.Y-bot.Y)
+        local w = h/2
+        local x,y = pos.X-w/2, pos.Y-h/2
+
+        if ShowBoxESP then
+            d.Box.TL.From=Vector2.new(x,y) d.Box.TL.To=Vector2.new(x+w,y)
+            d.Box.TR.From=Vector2.new(x+w,y) d.Box.TR.To=Vector2.new(x+w,y+h)
+            d.Box.BL.From=Vector2.new(x,y) d.Box.BL.To=Vector2.new(x,y+h)
+            d.Box.BR.From=Vector2.new(x,y+h) d.Box.BR.To=Vector2.new(x+w,y+h)
+            for _,l in pairs(d.Box) do l.Visible=true end
+        else for _,l in pairs(d.Box) do l.Visible=false end end
+
+        if ShowNameESP then
+            d.Name.Text=p.Name
+            d.Name.Position=Vector2.new(pos.X,y-15)
+            d.Name.Visible=true
+        else d.Name.Visible=false end
+
+        if ShowHealthESP then
+            local hp = hum.Health/hum.MaxHealth
+            d.HP.From=Vector2.new(x-6,y+h)
+            d.HP.To=Vector2.new(x-6,y+h*(1-hp))
+            d.HP.Visible=true
+        else d.HP.Visible=false end
+    end
+end)
+
+for _,p in ipairs(Players:GetPlayers()) do createESP(p) end
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
+
+------------------------------------------------
+-- ========== ESP TAB TOGGLES ==========
+------------------------------------------------
+EspTab:Section({
+    Title = " Setting ESP",
+    Desc = ""
+})
+EspTab:Toggle({Title="Dropped Items ESP", Flag = "DroppedItemESP",
+    Default = false, Callback=function(v)
+    ItemESPEnabled=v
+    if not v then for i in pairs(ItemESPs) do removeItemESP(i) end
+    else for _,i in ipairs(DroppedFolder:GetChildren()) do createItemESP(i) end end
+end})
+
+EspTab:Toggle({Title="Player Box ESP",Flag = "PlayerBoxESP",
+    Default = false, Callback=function(v) ShowBoxESP=v end})
+EspTab:Toggle({Title="Player Name ESP",Flag = "PlayerNameESP",
+    Default = false, Callback=function(v) ShowNameESP=v end})
+EspTab:Toggle({Title="Player Health ESP",Flag = "PlayerHealthESP",
+    Default = false, Callback=function(v) ShowHealthESP=v end})
