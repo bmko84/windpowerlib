@@ -1367,3 +1367,109 @@ MiscTab:Button({
         Invisible()
     end
 })
+-- PLAYER TAB : ซิ่งเร็ว (วาร์ป)
+------------------------------------------------
+local speedConn
+local warpDistance = 0.4
+local warpCooldown = 0.05
+local lastWarp = 0
+
+local function startSpeed()
+    speedConn = RunService.Heartbeat:Connect(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        if not hrp or not hum then return end
+
+        if tick() - lastWarp >= warpCooldown then
+            if hum.MoveDirection.Magnitude > 0 then
+                hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * warpDistance
+                lastWarp = tick()
+            end
+        end
+    end)
+end
+
+local function stopSpeed()
+    if speedConn then
+        speedConn:Disconnect()
+        speedConn = nil
+    end
+end
+
+PlayerTab:Toggle({
+    Title = "Speed",
+    Desc = "",
+    Default = false,
+    Callback = function(state)
+        if state then
+            startSpeed()
+        else
+            stopSpeed()
+        end
+    end
+})
+
+-----------------------------------------------
+-- [2] Item Magnet (ดูดของ)
+------------------------------------------------
+local magnetEnabled = false
+
+local CLIENT_ZONE_SIZE = Vector3.new(120, 14, 120)
+local SERVER_FAKE_RADIUS = 4000
+local MAGNET_SPEED = 0.9
+
+local remoteGet = ReplicatedStorage
+    :WaitForChild("Remotes")
+    :WaitForChild("Get")
+
+local function resizeZones()
+    if not workspace:FindFirstChild("DroppedItems") then return end
+    for _, item in ipairs(workspace.DroppedItems:GetChildren()) do
+        local zone = item:FindFirstChild("PickUpZone")
+        if zone and zone:IsA("BasePart") then
+            zone.Size = CLIENT_ZONE_SIZE
+            zone.Transparency = 1
+            zone.CanCollide = false
+            zone.Anchored = true
+        end
+    end
+end
+
+resizeZones()
+if workspace:FindFirstChild("DroppedItems") then
+    workspace.DroppedItems.ChildAdded:Connect(resizeZones)
+end
+
+RunService.Heartbeat:Connect(function()
+    if not magnetEnabled then return end
+
+    local char = player.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp or not workspace:FindFirstChild("DroppedItems") then return end
+
+    for _, item in ipairs(workspace.DroppedItems:GetChildren()) do
+        local prompt = item:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if not prompt then continue end
+
+        if (hrp.Position - item.Position).Magnitude <= SERVER_FAKE_RADIUS then
+            remoteGet:InvokeServer("pickup_dropped_item", item)
+
+            local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
+            if part then
+                part.CFrame = part.CFrame:Lerp(CFrame.new(hrp.Position), MAGNET_SPEED)
+            end
+        end
+    end
+end)
+PlayerTab:Toggle({
+    Title = "ดูดของ (Item Magnet)",
+    Desc = "Auto pickup dropped items",
+    Flag = "ItemMagnet", -- <<< ใส่ Flag สำหรับระบบเซฟ
+    Default = false,
+    Callback = function(v)
+        magnetEnabled = v
+    end
+})
