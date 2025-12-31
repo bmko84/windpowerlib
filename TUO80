@@ -843,7 +843,7 @@ Players.PlayerRemoving:Connect(removeESP)
 -- ========== ESP TAB TOGGLES ==========
 ------------------------------------------------
 EspTab:Section({
-    Title = " Setting ESP",
+    Title = "Setting ESP",
     Desc = ""
 })
 EspTab:Toggle({Title="Dropped Items ESP", Flag = "DroppedItemESP",
