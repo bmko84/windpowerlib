@@ -1558,3 +1558,55 @@ GunmodeTab:Slider({
         updateAllGuns()
     end
 })
+------------------------------------------------
+-- Infinite Stamina (Module-based)
+------------------------------------------------
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Net = require(ReplicatedStorage.Modules.Core.Net)
+local SprintModule = require(ReplicatedStorage.Modules.Game.Sprint)
+
+getgenv().InfiniteStamina = false
+
+-- Bypass Net
+if not getgenv().Bypassed then
+    local func = debug.getupvalue(Net.get, 2)
+    debug.setconstant(func, 3, "__Bypass")
+    debug.setconstant(func, 4, "__Bypass")
+    getgenv().Bypassed = true
+end
+
+repeat task.wait() until getgenv().Bypassed
+
+-- Force sprint
+RunService.Heartbeat:Connect(function()
+    if getgenv().InfiniteStamina then
+        Net.send("set_sprinting_1", true)
+    end
+end)
+
+-- Hook stamina bar
+local consume_stamina = SprintModule.consume_stamina
+local SprintBar = debug.getupvalue(consume_stamina, 2).sprint_bar
+local oldUpdate = SprintBar.update
+
+SprintBar.update = function(...)
+    if getgenv().InfiniteStamina then
+        return oldUpdate(function()
+            return 0.5
+        end)
+    end
+    return oldUpdate(...)
+end
+------------------------------------------------
+-- Player Tab Features
+------------------------------------------------
+PlayerTab:Toggle({
+    Title = "Infinite Stamina",
+    Desc = "Run forever without stamina drain",
+    Icon = "zap",
+    Type = "Checkbox",
+    Value = false,
+    Callback = function(state)
+        getgenv().InfiniteStamina = state
+    end
+})
