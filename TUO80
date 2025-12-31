@@ -1708,3 +1708,136 @@ player.CharacterAdded:Connect(function()
         startAntiRagdoll()
     end
 end)
+local HideNameEnabled = false
+
+local function RemoveBillboardGui()
+    local char = LocalPlayer.Character
+    if char then
+        for _, gui in pairs(char:GetDescendants()) do
+            if gui:IsA("BillboardGui") then gui:Destroy() end
+        end
+    end
+end
+
+CheaterTab:Toggle({
+    Title = "Hide Name",
+    Icon = "circle-check",
+    Value = HideNameEnabled,
+    Callback = function(state)
+        HideNameEnabled = state
+        if state then RemoveBillboardGui() end
+    end
+})
+
+LocalPlayer.Character.ChildAdded:Connect(function(child)
+    if HideNameEnabled and child:IsA("BillboardGui") then child:Destroy() end
+end)
+
+workspace.ChildAdded:Connect(function(child)
+    if HideNameEnabled and child:IsA("Model") and child.Name == LocalPlayer.Name then
+        child.ChildAdded:Connect(function(c)
+            if HideNameEnabled and c:IsA("BillboardGui") then c:Destroy() end
+        end)
+    end
+end)
+------------------------------------------------
+-- [1] Anti-Dead System
+------------------------------------------------
+local antiDeadEnabled = false
+local isAntiDead = false
+local depth = 3
+local fakeChar
+
+local function getCharData()
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid")
+    local root = char:WaitForChild("HumanoidRootPart")
+    return char, hum, root
+end
+
+local function forceDownReal(root, hum, char)
+    root.CFrame = root.CFrame - Vector3.new(0, depth, 0)
+    root.Velocity = Vector3.zero
+    root.AssemblyLinearVelocity = Vector3.zero
+    hum.PlatformStand = true
+    for _, p in ipairs(char:GetChildren()) do
+        if p:IsA("BasePart") then
+            p.CanCollide = false
+        end
+    end
+end
+
+local function createFakeCharacter(root)
+    local dummy = Instance.new("Model")
+    dummy.Name = player.Name .. "_Fake"
+
+    local hrp = Instance.new("Part")
+    hrp.Name = "HumanoidRootPart"
+    hrp.Size = Vector3.new(2,2,1)
+    hrp.Anchored = true
+    hrp.CanCollide = true
+    hrp.CFrame = root.CFrame
+    hrp.Parent = dummy
+
+    Instance.new("Humanoid", dummy)
+    dummy.Parent = workspace
+    return dummy
+end
+
+local function startAntiDead()
+    if isAntiDead then return end
+    isAntiDead = true
+
+    local char, hum, root = getCharData()
+    fakeChar = createFakeCharacter(root)
+    local fakeRoot = fakeChar:FindFirstChild("HumanoidRootPart")
+
+    task.spawn(function()
+        while antiDeadEnabled and hum.Health > 0 and hum.Health <= 21 do
+            forceDownReal(root, hum, char)
+
+            root.CFrame *= CFrame.Angles(0, math.rad(50), 0)
+            if fakeRoot then
+                fakeRoot.CFrame = root.CFrame + Vector3.new(0, depth, 0)
+            end
+
+            RunService.Heartbeat:Wait()
+        end
+
+        if fakeChar then fakeChar:Destroy() end
+        hum.PlatformStand = false
+        for _, p in ipairs(char:GetChildren()) do
+            if p:IsA("BasePart") then
+                p.CanCollide = true
+            end
+        end
+        root.CFrame += Vector3.new(0, depth + 2, 0)
+        isAntiDead = false
+    end)
+end
+
+local function hookAntiDead(char)
+    local hum = char:WaitForChild("Humanoid")
+    hum.HealthChanged:Connect(function(hp)
+        if not antiDeadEnabled then return end
+        if hp <= 21 and not isAntiDead then
+            startAntiDead()
+        end
+    end)
+end
+
+if player.Character then
+    hookAntiDead(player.Character)
+end
+player.CharacterAdded:Connect(hookAntiDead)
+
+-- UI Toggle
+PlayerTab:Toggle({
+    Title = "Anti-Dead",
+    Desc = "Fall underground & fake body when low HP",
+    Flag = "AntiDead", -- <<< ใส่ Flag สำหรับระบบเซฟ
+    Default = false,
+    Callback = function(v)
+        antiDeadEnabled = v
+    end
+})
