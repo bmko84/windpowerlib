@@ -1638,3 +1638,73 @@ GunmodeTab:Slider({
         updateAllGuns()
     end
 })
+PlayerTab:Section({
+    Title = "Safety",
+})
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+local CounterTable
+
+-- หา CounterTable
+local function findCounter()
+    for _, obj in ipairs(getgc(true)) do
+        if typeof(obj) == "table" and rawget(obj, "event") and rawget(obj, "func") then
+            return obj
+        end
+    end
+    return nil
+end
+
+-- ฟังก์ชันเริ่ม Anti Ragdoll
+local function startAntiRagdoll()
+    CounterTable = findCounter()
+    if not CounterTable then
+        warn("❌ ไม่พบ CounterTable!")
+        return
+    end
+
+    spawn(function()
+        while AntiRagdollEnabled do
+            CounterTable.event = (CounterTable.event or 0) + 1
+            local SendRemote = ReplicatedStorage.Remotes:WaitForChild("Send")
+            pcall(function()
+                SendRemote:FireServer(CounterTable.event, "end_ragdoll_early")
+            end)
+            wait(0.3)
+
+            if AntiRagdollEnabled then
+                CounterTable.event = (CounterTable.event or 0) + 1
+                pcall(function()
+                    SendRemote:FireServer(CounterTable.event, "clear_ragdoll")
+                end)
+            end
+            wait(0.3)
+        end
+    end)
+end
+
+-- WindUI Toggle
+PlayerTab:Toggle({
+    Title = "Anti Ragdoll",
+    Value = AntiRagdollEnabled,
+    Callback = function(state)
+        AntiRagdollEnabled = state
+        if AntiRagdollEnabled then
+            startAntiRagdoll()
+            print("✅ Anti Ragdoll ON")
+        else
+            print("❌ Anti Ragdoll OFF")
+        end
+    end
+})
+
+-- Auto start เมื่อ respawn
+player.CharacterAdded:Connect(function()
+    if AntiRagdollEnabled then
+        wait(1)
+        startAntiRagdoll()
+    end
+end)
