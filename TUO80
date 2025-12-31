@@ -859,3 +859,120 @@ EspTab:Toggle({Title="Player Name ESP",Flag = "PlayerNameESP",
     Default = false, Callback=function(v) ShowNameESP=v end})
 EspTab:Toggle({Title="Player Health ESP",Flag = "PlayerHealthESP",
     Default = false, Callback=function(v) ShowHealthESP=v end})
+-- HIGH JUMP SYSTEM
+------------------------------------------------
+local HighJumpEnabled = false
+local HighJumpPower = 70
+local DEFAULT_JUMP = 20
+
+local function GetHumanoid()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    return char:WaitForChild("Humanoid")
+end
+
+local function ApplyJump()
+    local hum = GetHumanoid()
+    hum.UseJumpPower = true
+
+    if HighJumpEnabled then
+        hum.JumpPower = HighJumpPower
+    else
+        hum.JumpPower = DEFAULT_JUMP
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.2)
+    ApplyJump()
+end)
+
+------------------------------------------------
+-- PLAYER TAB UI (⚠️ ใส่ Flag)
+------------------------------------------------
+PlayerTab:Toggle({
+    Title = "Jump",
+    Desc = "",
+    Flag = "HighJumpEnabled",
+    Default = false,
+    Callback = function(v)
+        HighJumpEnabled = v
+        ApplyJump()
+    end
+})
+
+PlayerTab:Slider({
+    Title = "พลังโดด",
+    Desc = "",
+    Flag = "HighJumpPower",
+    Step = 1,
+    Value = {
+        Min = 20,
+        Max = 120,
+        Default = 70
+    },
+    Callback = function(v)
+        HighJumpPower = tonumber(v)
+        ApplyJump()
+    end
+})
+
+------------------------------------------------
+-- CONFIG MANAGER
+------------------------------------------------
+local ConfigManager = Window.ConfigManager
+local AutoSaveName = "MyAutoConfig"
+local Loaded = false
+
+local function Notify(title, content, icon)
+    WindUI:Notify({
+        Title = title,
+        Content = content,
+        Duration = 1.5,
+        Icon = icon or "zap"
+    })
+end
+
+ConfigTab:Button({
+    Title = "Save Config",
+    Icon = "save",
+    Callback = function()
+        pcall(function()
+            local old = ConfigManager:CreateConfig(AutoSaveName)
+            old:Delete()
+        end)
+
+        local cfg = ConfigManager:CreateConfig(AutoSaveName)
+        cfg:Save()
+
+        Notify("Config", "Saved Successfully", "save")
+    end
+})
+
+------------------------------------------------
+-- AUTO LOAD CONFIG + APPLY
+------------------------------------------------
+task.spawn(function()
+    task.wait(2)
+
+    if Loaded then return end
+    Loaded = true
+
+    Notify("Config", "Loading Config...", "clock")
+
+    local success, err = pcall(function()
+        local cfg = ConfigManager:CreateConfig(AutoSaveName)
+        cfg:Load()
+    end)
+
+    if success then
+        -- 🔥 ดึงค่า Flag หลังโหลด
+        HighJumpEnabled = WindUI.Flags.HighJumpEnabled
+        HighJumpPower = WindUI.Flags.HighJumpPower
+
+        ApplyJump()
+
+        Notify("Config", "Loaded Successfully", "check")
+    else
+        Notify("Config", "Load Failed", "alert")
+    end
+end)
