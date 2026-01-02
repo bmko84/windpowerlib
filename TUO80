@@ -1494,8 +1494,8 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 PlayerTab:Toggle({
-    Title = "ดูดของ (Item Magnet)",
-    Desc = "Auto pickup dropped items",
+    Title = "Item Magnet",
+    Desc = "ดูดของ",
     Flag = "ItemMagnet", -- <<< ใส่ Flag สำหรับระบบเซฟ
     Default = false,
     Callback = function(v)
@@ -1878,5 +1878,61 @@ PlayerTab:Toggle({
     Default = false,
     Callback = function(v)
         antiDeadEnabled = v
+    end
+})
+PlayerTab:Section({
+    Title = "underground ",
+})
+-----------------------------------------------
+-- PLAYER TAB : โหมดกันล็อก
+------------------------------------------------
+local antiConn
+local t, spin, sinkTimer = 0, 0, 0
+local sinking = false
+
+local function startAnti()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hrp = char:WaitForChild("HumanoidRootPart")
+
+    antiConn = RunService.RenderStepped:Connect(function(dt)
+        t += dt * 35
+        spin += dt * math.rad(900)
+        sinkTimer += dt
+
+        local shake = math.sin(t) * math.rad(16)      -- ตูดสั่น
+        local sway  = math.sin(t * 0.8) * math.rad(7) -- เดินเหวี่ยง
+
+        if sinkTimer >= 0.5 then
+            sinking = not sinking
+            sinkTimer = 0
+        end
+
+        local yOffset = sinking and -0.9 or 0
+
+        hrp.CFrame =
+            hrp.CFrame *
+            CFrame.new(0, yOffset * dt * 10, 0) *
+            CFrame.Angles(sway, spin + shake, 0)
+    end)
+end
+
+local function stopAnti()
+    if antiConn then
+        antiConn:Disconnect()
+        antiConn = nil
+    end
+end
+
+PlayerTab:Toggle({
+    Title = "Anti-lock",
+    Desc = "",
+    Flag = "AntiLock", -- <<< ใส่ Flag สำหรับระบบเซฟ
+    Default = false,
+    Callback = function(state)
+        if state then
+            startAnti()
+        else
+            stopAnti()
+        end
     end
 })
