@@ -1545,7 +1545,7 @@ end
 ------------------------------------------------
 PlayerTab:Toggle({
     Title = "Infinite Stamina",
-    Desc = "Run forever (no stamina drain)",
+    Desc = "",
     Icon = "zap",
     Type = "Checkbox",
     Value = false,
