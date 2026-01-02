@@ -2069,3 +2069,69 @@ PlayerTab:Slider({
         burrowDepth = tonumber(value)
     end
 })
+------------------------------------------------
+-- No Recoil System (WindUI Compatible)
+------------------------------------------------
+getgenv().RecoilEnabled = false
+getgenv().GunRecoilValue = 0
+
+-- ฟังก์ชันใส่รีคอย
+local function ApplyRecoil()
+    if not LocalPlayer.Character then return end
+
+    for _, tool in ipairs(LocalPlayer.Character:GetChildren()) do
+        if tool:IsA("Tool") and tool:HasTag("Gun") then
+            if getgenv().RecoilEnabled then
+                tool:SetAttribute("Recoil", getgenv().GunRecoilValue)
+            end
+        end
+    end
+end
+
+-- ตอนถือปืน / เปลี่ยนปืน
+local function HookCharacter(char)
+    char.ChildAdded:Connect(function(child)
+        if child:IsA("Tool") then
+            task.wait(0.05)
+            ApplyRecoil()
+        end
+    end)
+end
+
+if LocalPlayer.Character then
+    HookCharacter(LocalPlayer.Character)
+end
+LocalPlayer.CharacterAdded:Connect(HookCharacter)
+
+------------------------------------------------
+-- UI (แบบเดียวกับ Jump)
+------------------------------------------------
+
+-- 🔘 Toggle เปิด/ปิด No Recoil
+GunmodeTab:Toggle({
+    Title = "No Recoil",
+    Desc = "เปิด / ปิด ระบบลดแรงดีด",
+    Flag = "NoRecoilEnabled",
+    Default = false,
+    Callback = function(v)
+        getgenv().RecoilEnabled = v
+        ApplyRecoil()
+    end
+})
+
+-- 🎚 Slider ปรับค่าแรงดีด
+GunmodeTab:Slider({
+    Title = "Recoil Power",
+    Desc = "0 = ไม่มีแรงดีด",
+    Flag = "RecoilPower",
+    Step = 0.1,
+    Value = {
+        Min = 0,
+        Max = 10,
+        Default = 0
+    },
+    Callback = function(v)
+        getgenv().GunRecoilValue = tonumber(v)
+        ApplyRecoil()
+    end
+})
