@@ -1362,8 +1362,75 @@ ServerTab:Button({
     end
 })
 MiscTab:Section({
-    Title = "ล่องหน",
+    Title = "Setting MiscTab",
     Desc = ""
+})
+local function clearAllQuests()
+    if not getgc then
+        warn("getgc not supported")
+        return
+    end
+
+    -- หา CounterTable
+    local CounterTable
+    for _, obj in ipairs(getgc(true)) do
+        if typeof(obj) == "table" and rawget(obj, "event") and rawget(obj, "func") then
+            CounterTable = obj
+            break
+        end
+    end
+
+    if not CounterTable then
+        warn("❌ CounterTable not found")
+        return
+    end
+
+    local GetRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Get")
+
+    -- หา Quest UI
+    local questFrame = LocalPlayer
+        :WaitForChild("PlayerGui")
+        :WaitForChild("Quests")
+        :WaitForChild("QuestsHolder")
+        :WaitForChild("QuestsScrollingFrame")
+
+    local claimed = 0
+    local total = 0
+
+    for _, child in ipairs(questFrame:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextButton") or child:IsA("ImageButton") then
+            total += 1
+            CounterTable.func = (CounterTable.func or 0) + 1
+
+            pcall(function()
+                GetRemote:InvokeServer(
+                    CounterTable.func,
+                    "claim_quest",
+                    child.Name
+                )
+            end)
+
+            claimed += 1
+            task.wait(0.15)
+        end
+    end
+
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "Quest Clear",
+        Text = "Cleared " .. claimed .. "/" .. total .. " quests",
+        Duration = 5
+    })
+
+    print("✅ Quest cleared:", claimed, "/", total)
+end
+MiscTab:Button({
+    Title = "Clear All Quests",
+    Desc = "เคลียร์เควสทั้งหมดทันที",
+    Callback = function()
+        task.spawn(function()
+            clearAllQuests()
+        end)
+    end
 })
 -- =========================
 -- ฟังก์ชัน Invisible (ของจริง BlockSpin)
