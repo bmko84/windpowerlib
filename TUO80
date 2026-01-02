@@ -1708,38 +1708,7 @@ player.CharacterAdded:Connect(function()
         startAntiRagdoll()
     end
 end)
-local HideNameEnabled = false
 
-local function RemoveBillboardGui()
-    local char = LocalPlayer.Character
-    if char then
-        for _, gui in pairs(char:GetDescendants()) do
-            if gui:IsA("BillboardGui") then gui:Destroy() end
-        end
-    end
-end
-
-CheaterTab:Toggle({
-    Title = "Hide Name",
-    Icon = "circle-check",
-    Value = HideNameEnabled,
-    Callback = function(state)
-        HideNameEnabled = state
-        if state then RemoveBillboardGui() end
-    end
-})
-
-LocalPlayer.Character.ChildAdded:Connect(function(child)
-    if HideNameEnabled and child:IsA("BillboardGui") then child:Destroy() end
-end)
-
-workspace.ChildAdded:Connect(function(child)
-    if HideNameEnabled and child:IsA("Model") and child.Name == LocalPlayer.Name then
-        child.ChildAdded:Connect(function(c)
-            if HideNameEnabled and c:IsA("BillboardGui") then c:Destroy() end
-        end)
-    end
-end)
 ------------------------------------------------
 -- [1] Anti-Dead System
 ------------------------------------------------
