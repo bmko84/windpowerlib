@@ -1638,6 +1638,75 @@ GunmodeTab:Slider({
         updateAllGuns()
     end
 })
+------------------------------------------------
+-- Hide Name (No duplicate / Respawn safe)
+------------------------------------------------
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local HideNameEnabled = false
+local charConn, descConn
+
+-- ลบ BillboardGui ทั้งหมดในตัวละคร
+local function removeAllBillboards(char)
+    for _, v in ipairs(char:GetDescendants()) do
+        if v:IsA("BillboardGui") then
+            v:Destroy()
+        end
+    end
+end
+
+-- เริ่มระบบซ่อนชื่อ
+local function startHideName()
+    local function onCharacter(char)
+        removeAllBillboards(char)
+
+        -- กัน Billboard ใหม่ที่ถูกสร้าง
+        descConn = char.DescendantAdded:Connect(function(v)
+            if HideNameEnabled and v:IsA("BillboardGui") then
+                v:Destroy()
+            end
+        end)
+    end
+
+    -- ถ้ามีตัวละครอยู่แล้ว
+    if LocalPlayer.Character then
+        onCharacter(LocalPlayer.Character)
+    end
+
+    -- ตอนตาย / รีตัว
+    charConn = LocalPlayer.CharacterAdded:Connect(onCharacter)
+end
+
+-- หยุดระบบ
+local function stopHideName()
+    if charConn then
+        charConn:Disconnect()
+        charConn = nil
+    end
+    if descConn then
+        descConn:Disconnect()
+        descConn = nil
+    end
+end
+
+------------------------------------------------
+-- UI Toggle
+------------------------------------------------
+PlayerTab:Toggle({
+    Title = "Hide Name",
+    Icon = "circle-check",
+    Flag = "HideName",
+    Default = false,
+    Callback = function(state)
+        HideNameEnabled = state
+        if state then
+            startHideName()
+        else
+            stopHideName()
+        end
+    end
+})
 PlayerTab:Section({
     Title = "Safety",
 })
