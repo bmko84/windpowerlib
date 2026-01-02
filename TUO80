@@ -697,7 +697,7 @@ end)
 VehicleTab:Toggle({
     Title = "Bump Aura",
     Flag = "BumpAura",
-    Desc = "This feature might cause lag.",
+    Desc = "",
     Default = false,
     Callback = function(value)
         _G.BumpAuraEnabled = value
@@ -1873,7 +1873,7 @@ player.CharacterAdded:Connect(hookAntiDead)
 -- UI Toggle
 PlayerTab:Toggle({
     Title = "Anti-Dead",
-    Desc = "Fall underground & fake body when low HP",
+    Desc = "",
     Flag = "AntiDead", -- <<< ใส่ Flag สำหรับระบบเซฟ
     Default = false,
     Callback = function(v)
