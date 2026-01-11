@@ -1,0 +1,64 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LP = Players.LocalPlayer
+
+local function getItemName(item)
+    if item:IsA("Tool") then
+        return item.Name
+    elseif item:IsA("StringValue") or item:IsA("IntValue") or item:IsA("NumberValue") then
+        return item.Name .. "=" .. tostring(item.Value)
+    else
+        return item.Name
+    end
+end
+
+local function createHeadESP(plr)
+    local char = plr.Character
+    if not char then return end
+    local head = char:FindFirstChild("Head")
+    if not head then return end
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Adornee = head
+    billboard.Size = UDim2.new(0, 250, 0, 50)
+    billboard.AlwaysOnTop = true
+    billboard.StudsOffset = Vector3.new(0, 2, 0)
+    billboard.Parent = head
+
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1, 0, 1, 0)
+    text.BackgroundTransparency = 1
+    text.TextColor3 = Color3.fromRGB(255, 255, 0)
+    text.TextStrokeTransparency = 0.5
+    text.TextScaled = true
+    text.Font = Enum.Font.SourceSansBold
+    text.Parent = billboard
+
+    RunService.Heartbeat:Connect(function()
+        local bp = plr:FindFirstChild("Backpack")
+        if bp then
+            local items = {}
+            for _, item in ipairs(bp:GetChildren()) do
+                table.insert(items, getItemName(item))
+            end
+            text.Text = plr.Name .. "\n[" .. table.concat(items, ", ") .. "]"
+        else
+            text.Text = plr.Name .. "\n[ไม่มีไอเทม]"
+        end
+    end)
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    if plr ~= LP then
+        if plr.Character then
+            createHeadESP(plr)
+        end
+        plr.CharacterAdded:Connect(createHeadESP)
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    if plr ~= LP then
+        plr.CharacterAdded:Connect(createHeadESP)
+    end
+end)
